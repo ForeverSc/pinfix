@@ -1,5 +1,5 @@
 {
-  "name": "pinfix",
+  "name": "pinfix-workspace",
   "private": true,
   "description": "Visual UI annotation overlay for Claude Code-powered source editing.",
   "repository": {
@@ -15,7 +15,7 @@
     "dev:vite-vue": "pnpm --filter example-vite-vue run dev",
     "dev:webpack": "pnpm --filter example-webpack-react run dev",
     "dev:rspack": "pnpm --filter example-rspack-react run dev",
-    "release": "pnpm run build && pnpm --filter pinfix publish",
+    "release": "pnpm run build && pnpm --filter @pinfix/plugin publish",
     "test": "vitest run"
   },
   "devDependencies": {

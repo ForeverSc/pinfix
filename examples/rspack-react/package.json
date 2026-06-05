@@ -10,7 +10,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "pinfix": "workspace:*",
+    "@pinfix/plugin": "workspace:*",
     "@rspack/cli": "^2.0.6",
     "@rspack/core": "^2.0.6",
     "@rspack/dev-server": "^2.0.3",

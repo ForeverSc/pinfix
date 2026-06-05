@@ -8,7 +8,7 @@
 </div>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/pinfix"><img src="https://img.shields.io/npm/v/pinfix?label=version&style=flat-square&color=0070ea" alt="Version"></a>
+  <a href="https://www.npmjs.com/package/@pinfix/plugin"><img src="https://img.shields.io/npm/v/%40pinfix%2Fplugin?label=version&style=flat-square&color=0070ea" alt="Version"></a>
   <img src="https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite">
   <img src="https://img.shields.io/badge/Webpack-5-8DD6F9?style=flat-square&logo=webpack&logoColor=black" alt="Webpack">
   <img src="https://img.shields.io/badge/Rspack-2-FF6600?style=flat-square&logo=rspack&logoColor=white" alt="Rspack">
@@ -31,7 +31,7 @@
 ## 快速开始
 
 ```bash
-npm install -D pinfix
+npm install -D @pinfix/plugin
 ```
 
 在构建配置中添加插件：
@@ -39,7 +39,7 @@ npm install -D pinfix
 **Vite**
 ```ts
 // vite.config.ts
-import pinfix from 'pinfix/vite'
+import pinfix from '@pinfix/plugin/vite'
 
 export default defineConfig({
   plugins: [pinfix()]
@@ -49,7 +49,7 @@ export default defineConfig({
 **Webpack**
 ```ts
 // webpack.config.js
-import pinfix from 'pinfix/webpack'
+import pinfix from '@pinfix/plugin/webpack'
 
 export default {
   plugins: [pinfix()]
@@ -59,7 +59,7 @@ export default {
 **Rspack / Rsbuild**
 ```ts
 // rsbuild.config.ts
-import pinfix from 'pinfix/rspack'
+import pinfix from '@pinfix/plugin/rspack'
 
 export default {
   tools: {
@@ -113,9 +113,9 @@ pinfix({
 
 | 构建工具 | 导入路径 | 状态 |
 |---------|-------------|--------|
-| Vite 5+ | `pinfix/vite` | 稳定 |
-| Webpack 5 | `pinfix/webpack` | 稳定 |
-| Rspack 2 | `pinfix/rspack` | 稳定 |
+| Vite 5+ | `@pinfix/plugin/vite` | 稳定 |
+| Webpack 5 | `@pinfix/plugin/webpack` | 稳定 |
+| Rspack 2 | `@pinfix/plugin/rspack` | 稳定 |
 
 ## 环境要求
 

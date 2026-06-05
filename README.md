@@ -8,7 +8,7 @@
 </div>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/pinfix"><img src="https://img.shields.io/npm/v/pinfix?label=version&style=flat-square&color=0070ea" alt="Version"></a>
+  <a href="https://www.npmjs.com/package/@pinfix/plugin"><img src="https://img.shields.io/npm/v/%40pinfix%2Fplugin?label=version&style=flat-square&color=0070ea" alt="Version"></a>
   <img src="https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite">
   <img src="https://img.shields.io/badge/Webpack-5-8DD6F9?style=flat-square&logo=webpack&logoColor=black" alt="Webpack">
   <img src="https://img.shields.io/badge/Rspack-2-FF6600?style=flat-square&logo=rspack&logoColor=white" alt="Rspack">
@@ -31,7 +31,7 @@ Traditional Claude Code workflows require you to explain *where* in the codebase
 ## Quick Start
 
 ```bash
-npm install -D pinfix
+npm install -D @pinfix/plugin
 ```
 
 Add the plugin to your build config:
@@ -39,7 +39,7 @@ Add the plugin to your build config:
 **Vite**
 ```ts
 // vite.config.ts
-import pinfix from 'pinfix/vite'
+import pinfix from '@pinfix/plugin/vite'
 
 export default defineConfig({
   plugins: [pinfix()]
@@ -49,7 +49,7 @@ export default defineConfig({
 **Webpack**
 ```ts
 // webpack.config.js
-import pinfix from 'pinfix/webpack'
+import pinfix from '@pinfix/plugin/webpack'
 
 export default {
   plugins: [pinfix()]
@@ -59,7 +59,7 @@ export default {
 **Rspack / Rsbuild**
 ```ts
 // rsbuild.config.ts
-import pinfix from 'pinfix/rspack'
+import pinfix from '@pinfix/plugin/rspack'
 
 export default {
   tools: {
@@ -113,9 +113,9 @@ pinfix({
 
 | Bundler | Import Path | Status |
 |---------|-------------|--------|
-| Vite 5+ | `pinfix/vite` | Stable |
-| Webpack 5 | `pinfix/webpack` | Stable |
-| Rspack 2 | `pinfix/rspack` | Stable |
+| Vite 5+ | `@pinfix/plugin/vite` | Stable |
+| Webpack 5 | `@pinfix/plugin/webpack` | Stable |
+| Rspack 2 | `@pinfix/plugin/rspack` | Stable |
 
 ## Requirements
 

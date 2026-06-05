@@ -1,6 +1,6 @@
 const path = require('path')
 const { HtmlRspackPlugin } = require('@rspack/core')
-const pinfix = require('pinfix/rspack')
+const pinfix = require('@pinfix/plugin/rspack')
 
 /** @type {import('@rspack/core').Configuration} */
 module.exports = {

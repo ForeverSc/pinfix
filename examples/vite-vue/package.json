@@ -10,7 +10,7 @@
     "vue": "^3.5.0"
   },
   "devDependencies": {
-    "pinfix": "workspace:*",
+    "@pinfix/plugin": "workspace:*",
     "@vitejs/plugin-vue": "^6.0.7",
     "typescript": "^6.0.3",
     "vite": "^8.0.16"

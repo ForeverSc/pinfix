@@ -1,6 +1,6 @@
 const path = require('path')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
-const pinfix = require('pinfix/webpack')
+const pinfix = require('@pinfix/plugin/webpack')
 
 module.exports = {
   entry: './src/main.tsx',
