@@ -1,0 +1,26 @@
+{
+  "name": "pinfix",
+  "private": true,
+  "description": "Visual UI annotation overlay for Claude Code-powered source editing.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/foreversc/pinfix.git"
+  },
+  "license": "MIT",
+  "author": "foreversc",
+  "scripts": {
+    "build": "pnpm -r run build",
+    "dev": "pnpm -r run dev --parallel",
+    "dev:vite-react": "pnpm --filter example-vite-react run dev",
+    "dev:vite-vue": "pnpm --filter example-vite-vue run dev",
+    "dev:webpack": "pnpm --filter example-webpack-react run dev",
+    "dev:rspack": "pnpm --filter example-rspack-react run dev",
+    "release": "pnpm run build && pnpm --filter pinfix publish",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  }
+}

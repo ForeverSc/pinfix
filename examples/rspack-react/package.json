@@ -1,0 +1,21 @@
+{
+  "name": "example-rspack-react",
+  "private": true,
+  "scripts": {
+    "dev": "rspack serve",
+    "build": "rspack build"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "pinfix": "workspace:*",
+    "@rspack/cli": "^2.0.6",
+    "@rspack/core": "^2.0.6",
+    "@rspack/dev-server": "^2.0.3",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^6.0.3"
+  }
+}

@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PinFix - Visual Frontend Editing for Claude Code</title>
+  <meta name="description" content="PinFix lets Claude Code edit frontend pages like design comments. Click any UI, describe changes, and map them to React, Vue, Vite/Webpack/Rspack source code.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0f0f1a;
+      --bg-hero: #1a1a2e;
+      --surface: #2d3135;
+      --primary: #0070ea;
+      --primary-dim: #adc7ff;
+      --on-surface: #eef1f6;
+      --muted: rgba(193, 198, 215, 0.6);
+      --border: rgba(113, 119, 134, 0.3);
+      --success: #22c55e;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--on-surface);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Nav */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 16px 24px;
+      background: rgba(15, 15, 26, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    nav .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo {
+      font-size: 20px;
+      font-weight: 700;
+      text-decoration: none;
+      color: var(--on-surface);
+    }
+    .nav-logo span { color: var(--primary); }
+    .nav-links { display: flex; gap: 24px; align-items: center; }
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--on-surface); }
+    .nav-btn {
+      background: var(--primary);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .nav-btn:hover { opacity: 0.9; }
+    .lang-switch {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--on-surface);
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 500;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      padding-right: 24px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .lang-switch:hover { border-color: var(--primary); }
+    .lang-switch option { background: var(--surface); color: var(--on-surface); }
+
+    /* Hero */
+    .hero {
+      padding: 90px 24px 36px;
+      text-align: center;
+      background: radial-gradient(ellipse at 50% 0%, rgba(0,112,234,0.12) 0%, transparent 60%);
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0,112,234,0.1);
+      border: 1px solid rgba(0,112,234,0.3);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 13px;
+      color: var(--primary-dim);
+      margin-bottom: 24px;
+    }
+    .hero h1 {
+      font-size: clamp(40px, 6vw, 64px);
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      line-height: 1.1;
+      margin-bottom: 20px;
+    }
+    .hero h1 .highlight {
+      background: linear-gradient(135deg, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: 18px;
+      color: var(--muted);
+      max-width: 640px;
+      margin: 0 auto 36px;
+    }
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: var(--radius-sm);
+      font-size: 15px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: #005bc4; }
+    .btn-secondary { background: var(--surface); color: var(--on-surface); border: 1px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--primary); }
+
+    /* Sections */
+    section { padding: 80px 24px; }
+    .section-title {
+      text-align: center;
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+    }
+    .section-subtitle {
+      text-align: center;
+      color: var(--muted);
+      font-size: 16px;
+      max-width: 500px;
+      margin: 0 auto 48px;
+    }
+
+    /* How it works */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 32px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .step {
+      text-align: center;
+      padding: 32px 24px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      position: relative;
+    }
+    .step-num {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+    .step h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+    .step p { font-size: 14px; color: var(--muted); }
+    .step-connector {
+      display: none;
+      position: absolute;
+      right: -20px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--primary);
+      font-size: 20px;
+    }
+    @media (min-width: 800px) {
+      .step-connector { display: block; }
+    }
+
+    /* Features */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    .feature-card {
+      padding: 24px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      transition: border-color 0.2s;
+    }
+    .feature-card:hover { border-color: var(--primary); }
+    .feature-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: rgba(0,112,234,0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      color: var(--primary-dim);
+    }
+    .feature-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+    .feature-card p { font-size: 14px; color: var(--muted); line-height: 1.5; }
+
+    /* Code */
+    .code-section { background: var(--bg-hero); }
+    .code-block {
+      max-width: 640px;
+      margin: 0 auto;
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .code-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .code-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--border);
+    }
+    .code-title {
+      font-size: 12px;
+      color: var(--muted);
+      margin-left: 8px;
+    }
+    .code-body {
+      padding: 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      overflow-x: auto;
+    }
+    .code-body .kw { color: #c792ea; }
+    .code-body .fn { color: #82aaff; }
+    .code-body .str { color: #c3e88d; }
+    .code-body .cm { color: rgba(193,198,215,0.4); }
+    .code-body .br { color: #89ddff; }
+
+    /* Bundlers */
+    .bundlers {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .bundler-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 30px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--on-surface);
+    }
+    .bundler-badge svg { width: 20px; height: 20px; }
+
+    /* Footer */
+    footer {
+      padding: 40px 24px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+    footer p { font-size: 14px; color: var(--muted); }
+    footer a { color: var(--primary-dim); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* Animations */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .fade-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Mobile */
+    @media (max-width: 640px) {
+      .hero { padding: 120px 16px 60px; }
+      .hero h1 { font-size: 32px; }
+      section { padding: 48px 16px; }
+      .nav-links a:not(.nav-btn) { display: none; }
+      .demo-container { transform: scale(0.75); transform-origin: top center; }
+    }
+
+    /* Demo Animation */
+    .demo-section { padding: 0 24px 32px; overflow: hidden; }
+    .demo-container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #1e1e2e;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 24px 48px rgba(0,0,0,0.4);
+    }
+    .demo-toolbar {
+      padding: 12px 16px;
+      background: #252535;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .demo-toolbar .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .demo-toolbar .dot-r { background: #ff5f56; }
+    .demo-toolbar .dot-y { background: #ffbd2e; }
+    .demo-toolbar .dot-g { background: #27c93f; }
+    .demo-toolbar .demo-url {
+      margin-left: 12px;
+      background: #1a1a2e;
+      border-radius: 6px;
+      padding: 4px 12px;
+      font-size: 12px;
+      color: var(--muted);
+      flex: 1;
+    }
+    .demo-body {
+      padding: 32px;
+      position: relative;
+      min-height: 360px;
+      background: #fafafa;
+      overflow: hidden;
+    }
+    .demo-app-header {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #333;
+      font-family: 'Inter', sans-serif;
+    }
+    .demo-card {
+      background: #fff;
+      border: 2px solid transparent;
+      border-radius: 10px;
+      padding: 16px;
+      width: 200px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .demo-card.highlighted {
+      border-color: #0070ea;
+      box-shadow: 0 0 0 4px rgba(0,112,234,0.1);
+    }
+    .demo-btn.highlighted {
+      outline: 2px solid #0070ea;
+      outline-offset: 2px;
+      box-shadow: 0 0 0 4px rgba(0,112,234,0.1);
+    }
+    .demo-card h4 { font-size: 13px; margin-bottom: 10px; color: #333; font-weight: 600; }
+    .demo-btn {
+      display: inline-block;
+      padding: 7px 14px;
+      background: #0070ea;
+      color: #fff;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background 0.4s;
+    }
+
+    /* Cursor */
+    .demo-cursor {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      pointer-events: none;
+      z-index: 10;
+      opacity: 0;
+      transition: left 0.8s cubic-bezier(0.4,0,0.2,1), top 0.8s cubic-bezier(0.4,0,0.2,1), opacity 0.3s;
+    }
+    .demo-cursor.visible { opacity: 1; }
+    .demo-cursor.crosshair svg { display: none; }
+    .demo-cursor.crosshair::after {
+      content: '+';
+      font-size: 24px;
+      font-weight: 300;
+      color: #0070ea;
+      position: absolute;
+      top: -4px;
+      left: 4px;
+    }
+
+    /* Pin — matches real .pinfix-pin-dot */
+    .demo-pin {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #0070ea;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      opacity: 0;
+      transform: scale(0);
+      transition: opacity 0.3s, transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+      z-index: 5;
+    }
+    .demo-pin.visible { opacity: 1; transform: scale(1); }
+    .demo-pin.pulse { animation: demo-pulse 2s cubic-bezier(0.4,0,0.6,1) infinite; }
+    @keyframes demo-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(1.1); }
+    }
+
+    /* Chat dialog — matches real .pinfix-chat */
+    .demo-dialog {
+      position: absolute;
+      width: 260px;
+      background: #2d3135;
+      border-radius: 12px;
+      border: 1px solid rgba(113, 119, 134, 0.3);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      opacity: 0;
+      transform: scale(0.9) translateY(8px);
+      transition: opacity 0.3s, transform 0.3s;
+      z-index: 20;
+      overflow: hidden;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      color: #eef1f6;
+    }
+    .demo-dialog.visible { opacity: 1; transform: scale(1) translateY(0); }
+
+    /* Dialog header — matches .pinfix-chat-header */
+    .demo-dialog-header {
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(113, 119, 134, 0.2);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #2d3135;
+    }
+    .demo-dialog-header .icon {
+      width: 22px;
+      height: 22px;
+      background: rgba(0, 112, 234, 0.2);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .demo-dialog-header .title { font-size: 13px; font-weight: 600; flex: 1; }
+    .demo-dialog-header .actions { display: flex; gap: 2px; }
+    .demo-dialog-header .hdr-btn {
+      width: 24px; height: 24px;
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      color: rgba(193, 198, 215, 0.6);
+    }
+
+    /* Source path bar */
+    .demo-dialog-path {
+      padding: 4px 12px;
+      font-size: 11px;
+      color: rgba(193, 198, 215, 0.6);
+      background: rgba(255,255,255,0.03);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Messages — matches .pinfix-chat-msg */
+    .demo-dialog-body {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .demo-msg {
+      padding: 8px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      line-height: 1.5;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 0.3s, transform 0.3s;
+    }
+    .demo-msg.visible { opacity: 1; transform: translateY(0); }
+    .demo-msg-user {
+      background: #0070ea;
+      color: #fefcff;
+      align-self: flex-end;
+      border-top-right-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .demo-msg-ai {
+      background: rgba(224, 227, 232, 0.1);
+      border: 1px solid rgba(113, 119, 134, 0.2);
+      color: #eef1f6;
+      align-self: flex-start;
+      border-top-left-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    /* Input area — matches .pinfix-chat-input-row */
+    .demo-input-row {
+      padding: 8px 12px 12px;
+      border-top: 1px solid rgba(113, 119, 134, 0.2);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .demo-textarea {
+      flex: 1;
+      background: rgba(224, 227, 232, 0.1);
+      border: 1px solid rgba(113, 119, 134, 0.3);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 12px;
+      color: rgba(193, 198, 215, 0.5);
+    }
+    .demo-send-btn {
+      color: #adc7ff;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* FAB — matches real .pinfix-fab */
+    .demo-fab {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #2d3135;
+      border: 1px solid rgba(113, 119, 134, 0.3);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #adc7ff;
+      z-index: 30;
+      transition: background 0.2s, transform 0.15s, border-color 0.2s;
+    }
+    .demo-fab.active {
+      background: #0070ea;
+      color: #fff;
+      border-color: #0070ea;
+      transform: scale(1.05);
+    }
+  </style>
+</head>
+<body>
+  <!-- Nav -->
+  <nav>
+    <div class="container">
+      <a href="#" class="nav-logo"><span>Pin</span>Fix</a>
+      <div class="nav-links">
+        <a href="#how-it-works" data-i18n="nav.how">How it Works</a>
+        <a href="#features" data-i18n="nav.features">Features</a>
+        <a href="#quickstart" data-i18n="nav.quickstart">Quick Start</a>
+        <select class="lang-switch" id="lang-switch">
+          <option value="en">English</option>
+          <option value="zh">中文</option>
+        </select>
+        <a href="https://github.com/foreversc/pinfix" title="GitHub" style="line-height:0;color:var(--muted);transition:color 0.2s;" onmouseover="this.style.color='var(--on-surface)'" onmouseout="this.style.color='var(--muted)'">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.31 3.5 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.12-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6.02 0c2.28-1.55 3.29-1.23 3.29-1.23.66 1.66.25 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58A12.01 12.01 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <h1 data-i18n="hero.title">Edit Frontend Pages Like <span class="highlight">Design Comments.</span></h1>
+    <p data-i18n="hero.subtitle">Click any UI, describe what you want to change, and PinFix lets Claude Code precisely find the source code and apply the edit in real time.</p>
+    <div class="hero-actions">
+      <a href="#quickstart" class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m13 2-2 10h7l-8 10 2-10H5l8-10z"/></svg>
+        <span data-i18n="hero.cta">Get Started</span>
+      </a>
+      <a href="https://github.com/foreversc/pinfix" class="btn btn-secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.31 3.5 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.12-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6.02 0c2.28-1.55 3.29-1.23 3.29-1.23.66 1.66.25 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58A12.01 12.01 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        <span data-i18n="hero.github">View on GitHub</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- Demo Animation -->
+  <section class="demo-section">
+    <div class="demo-container">
+      <div class="demo-toolbar">
+        <div class="dot dot-r"></div>
+        <div class="dot dot-y"></div>
+        <div class="dot dot-g"></div>
+        <div class="demo-url">localhost:5173</div>
+      </div>
+      <div class="demo-body">
+        <div class="demo-app-header">My App</div>
+        <div class="demo-card" id="demo-card">
+          <h4>Counter</h4>
+          <span class="demo-btn" id="demo-btn">Count is 0</span>
+        </div>
+
+        <!-- Animated cursor -->
+        <div class="demo-cursor" id="demo-cursor">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#333"><path d="M5 3l14 8-6 2-3 7-5-17z"/></svg>
+        </div>
+
+        <!-- Pin dot -->
+        <div class="demo-pin" id="demo-pin"></div>
+
+        <!-- FAB button -->
+        <div class="demo-fab" id="demo-fab">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </div>
+
+        <!-- Chat dialog (mirrors real PinFix UI) -->
+        <div class="demo-dialog" id="demo-dialog">
+          <div class="demo-dialog-header">
+            <div class="icon">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#adc7ff" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            </div>
+            <span class="title">PinFix</span>
+            <div class="actions">
+              <div class="hdr-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg></div>
+              <div class="hdr-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+            </div>
+          </div>
+          <div class="demo-dialog-path">src/components/Counter.tsx:8:5</div>
+          <div class="demo-dialog-body">
+            <div class="demo-msg demo-msg-user" id="demo-user-msg">make the button red</div>
+            <div class="demo-msg demo-msg-ai" id="demo-ai-msg">
+              <span id="demo-ai-text"></span>
+            </div>
+          </div>
+          <div class="demo-input-row">
+            <div class="demo-textarea">Describe a change...</div>
+            <div class="demo-send-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it Works -->
+  <section id="how-it-works" class="fade-in">
+    <div class="container">
+      <h2 class="section-title" data-i18n="how.title">How it Works</h2>
+      <p class="section-subtitle" data-i18n="how.subtitle">Three steps from idea to implementation. No context switching required.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <span class="step-connector">&rarr;</span>
+          <h3 data-i18n="how.step1.title">Select</h3>
+          <p data-i18n="how.step1.desc">Press Alt+Shift+Z to enter edit mode. Hover over any element — it highlights instantly. Click to place a pin.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <span class="step-connector">&rarr;</span>
+          <h3 data-i18n="how.step2.title">Describe</h3>
+          <p data-i18n="how.step2.desc">Type what you want to change in natural language. "Make this button larger and blue" — that's it.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3 data-i18n="how.step3.title">Done</h3>
+          <p data-i18n="how.step3.desc">Claude Code edits your source code directly. HMR applies the change instantly. Continue the conversation to refine.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features" class="fade-in">
+    <div class="container">
+      <h2 class="section-title" data-i18n="feat.title">Features</h2>
+      <p class="section-subtitle" data-i18n="feat.subtitle">Everything you need for Claude Code-assisted visual development.</p>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2m0 18v2m-9-11h2m18 0h2m-4.2-6.8-1.4 1.4M5.6 18.4l-1.4 1.4m0-15.6 1.4 1.4m12.8 12.8 1.4 1.4"/></svg>
+          </div>
+          <h3 data-i18n="feat.visual.title">Visual Selection</h3>
+          <p data-i18n="feat.visual.desc">Crosshair mode highlights every component. Click to pin — no need to search for file paths or line numbers.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <h3 data-i18n="feat.chat.title">Multi-turn Chat</h3>
+          <p data-i18n="feat.chat.desc">Carry on multi-turn conversations across pins. Iterate on changes through natural dialogue without losing context.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m13 2-2 10h7l-8 10 2-10H5l8-10z"/></svg>
+          </div>
+          <h3 data-i18n="feat.hmr.title">Real-time HMR</h3>
+          <p data-i18n="feat.hmr.desc">Source code edits trigger Hot Module Replacement. See changes appear in under a second, no page refresh needed.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+          </div>
+          <h3 data-i18n="feat.framework.title">Framework Agnostic</h3>
+          <p data-i18n="feat.framework.desc">Works with React, Vue, and any JSX/TSX component. Automatically traces source locations via build-time transforms.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <h3 data-i18n="feat.zero.title">Zero Config</h3>
+          <p data-i18n="feat.zero.desc">One plugin line in your build config. The channel server spawns and cleans up automatically.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+          </div>
+          <h3 data-i18n="feat.dev.title">Dev Mode Only</h3>
+          <p data-i18n="feat.dev.desc">Completely stripped in production builds. Zero runtime overhead, no bundle size impact for your users.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quick Start -->
+  <section id="quickstart" class="code-section fade-in">
+    <div class="container">
+      <h2 class="section-title" data-i18n="code.title">Quick Start</h2>
+      <p class="section-subtitle" data-i18n="code.subtitle">Up and running in under a minute.</p>
+      <div class="code-block">
+        <div class="code-header">
+          <div class="code-dot"></div>
+          <div class="code-dot"></div>
+          <div class="code-dot"></div>
+          <span class="code-title">vite.config.ts</span>
+        </div>
+        <pre class="code-body"><span class="cm">// 1. Install</span>
+<span class="cm">// npm install -D pinfix</span>
+
+<span class="cm">// 2. Add plugin</span>
+<span class="kw">import</span> <span class="fn">pinfix</span> <span class="kw">from</span> <span class="str">'pinfix/vite'</span>
+
+<span class="kw">export default</span> <span class="fn">defineConfig</span><span class="br">({</span>
+  plugins: <span class="br">[</span><span class="fn">pinfix</span>()<span class="br">]</span>
+<span class="br">})</span>
+
+<span class="cm">// 3. Start dev server and press Alt+Shift+Z</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- Supported Bundlers -->
+  <section class="fade-in">
+    <div class="container">
+      <h2 class="section-title" data-i18n="stack.title">Works With Your Stack</h2>
+      <p class="section-subtitle" data-i18n="stack.subtitle">First-class support for major bundlers and frameworks.</p>
+      <div class="bundlers">
+        <div class="bundler-badge">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 19.5h20L12 2z" stroke="#646CFF" stroke-width="2"/></svg>
+          Vite
+        </div>
+        <div class="bundler-badge">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2l10 6v8l-10 6-10-6V8l10-6z" stroke="#8DD6F9" stroke-width="2"/></svg>
+          Webpack
+        </div>
+        <div class="bundler-badge">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2l10 6v8l-10 6-10-6V8l10-6z" stroke="#FF6600" stroke-width="2"/></svg>
+          Rspack
+        </div>
+        <div class="bundler-badge">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#61DAFB" stroke-width="2"/><circle cx="12" cy="12" r="2" fill="#61DAFB"/></svg>
+          React
+        </div>
+        <div class="bundler-badge">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 22h10l10-20H12z" stroke="#42B883" stroke-width="2"/></svg>
+          Vue
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>
+      MIT License &middot; Built by <a href="https://github.com/foreversc">foreversc</a> &middot;
+      <a href="https://github.com/foreversc/pinfix">GitHub</a>
+    </p>
+  </footer>
+
+  <!-- Scroll animation -->
+  <script>
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+  </script>
+
+  <!-- Demo sequence animation -->
+  <script>
+    (function() {
+      const cursor = document.getElementById('demo-cursor');
+      const card = document.getElementById('demo-card');
+      const btn = document.getElementById('demo-btn');
+      const pin = document.getElementById('demo-pin');
+      const fab = document.getElementById('demo-fab');
+      const dialog = document.getElementById('demo-dialog');
+      const userMsg = document.getElementById('demo-user-msg');
+      const aiMsg = document.getElementById('demo-ai-msg');
+      const aiText = document.getElementById('demo-ai-text');
+
+      const aiResponse = 'Done! Changed background to red.';
+
+      function reset() {
+        cursor.className = 'demo-cursor';
+        cursor.style.left = '';
+        cursor.style.top = '';
+        card.classList.remove('highlighted');
+        btn.classList.remove('highlighted');
+        pin.classList.remove('visible');
+        pin.classList.remove('pulse');
+        pin.style.left = '';
+        pin.style.top = '';
+        fab.classList.remove('active');
+        dialog.classList.remove('visible');
+        dialog.style.left = '';
+        dialog.style.top = '';
+        userMsg.classList.remove('visible');
+        aiMsg.classList.remove('visible');
+        aiText.textContent = '';
+        btn.style.background = '';
+        btn.style.transition = '';
+      }
+
+      function runSequence() {
+        reset();
+
+        // Use offsetLeft/offsetTop for reliable positioning within demo-body
+        const fabLeft = fab.offsetLeft + fab.offsetWidth / 2 - 6;
+        const fabTop = fab.offsetTop + fab.offsetHeight / 2 - 6;
+        // btn.offsetParent is demo-body (position:relative), so offset is already absolute within demo-body
+        const btnCenterX = btn.offsetLeft + btn.offsetWidth / 2 - 6;
+        const btnCenterY = btn.offsetTop + btn.offsetHeight / 2 - 6;
+        const pinLeft = btn.offsetLeft + btn.offsetWidth - 8;
+        const pinTop = btn.offsetTop - 8;
+        // Place dialog to the right of pin, but if it overflows, place below button
+        const demoBody = btn.closest('.demo-body');
+        const bodyWidth = demoBody ? demoBody.offsetWidth : 800;
+        let dlgLeft = btn.offsetLeft + btn.offsetWidth + 20;
+        let dlgTop = btn.offsetTop - 4;
+        if (dlgLeft + 260 > bodyWidth - 16) {
+          dlgLeft = btn.offsetLeft;
+          dlgTop = btn.offsetTop + btn.offsetHeight + 16;
+        }
+
+        // Position cursor offscreen initially (bottom-right area)
+        cursor.style.left = (fabLeft - 60) + 'px';
+        cursor.style.top = (fabTop + 20) + 'px';
+
+        // Step 1: Cursor appears, moves toward FAB
+        setTimeout(() => {
+          cursor.classList.add('visible');
+          cursor.style.left = fabLeft + 'px';
+          cursor.style.top = fabTop + 'px';
+        }, 400);
+
+        // Step 2: Click FAB — FAB activates
+        setTimeout(() => {
+          fab.classList.add('active');
+        }, 1300);
+
+        // Step 3: Cursor becomes crosshair, moves toward button
+        setTimeout(() => {
+          cursor.classList.add('crosshair');
+          cursor.style.left = btnCenterX + 'px';
+          cursor.style.top = btnCenterY + 'px';
+        }, 1700);
+
+        // Step 4: Highlight button on hover
+        setTimeout(() => {
+          btn.classList.add('highlighted');
+        }, 2500);
+
+        // Step 5: Click — show pin at card top-right, hide cursor, deactivate FAB
+        setTimeout(() => {
+          pin.style.left = pinLeft + 'px';
+          pin.style.top = pinTop + 'px';
+          pin.classList.add('visible');
+          pin.classList.add('pulse');
+          cursor.classList.remove('visible');
+          fab.classList.remove('active');
+        }, 3100);
+
+        // Step 6: Show dialog to the right of pin
+        setTimeout(() => {
+          dialog.style.left = dlgLeft + 'px';
+          dialog.style.top = dlgTop + 'px';
+          dialog.classList.add('visible');
+        }, 3600);
+
+        // Step 7: Show user message
+        setTimeout(() => {
+          userMsg.classList.add('visible');
+          pin.classList.remove('pulse');
+        }, 4100);
+
+        // Step 8: Claude Code streams response
+        setTimeout(() => {
+          aiMsg.classList.add('visible');
+          let i = 0;
+          function typeChar() {
+            if (i < aiResponse.length) {
+              aiText.textContent = aiResponse.slice(0, i + 1);
+              i++;
+              setTimeout(typeChar, 35);
+            }
+          }
+          typeChar();
+        }, 4700);
+
+        // Step 9: Button turns red (HMR effect)
+        setTimeout(() => {
+          btn.style.transition = 'background 0.5s ease';
+          btn.style.background = '#ef4444';
+        }, 6500);
+
+        // Step 10: Pause then loop
+        setTimeout(() => {
+          runSequence();
+        }, 9500);
+      }
+
+      // Start when demo scrolls into view
+      const demoObserver = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+          runSequence();
+          demoObserver.disconnect();
+        }
+      }, { threshold: 0.3 });
+      demoObserver.observe(document.querySelector('.demo-section'));
+    })();
+  </script>
+  <!-- i18n -->
+  <script>
+    (function() {
+      const zh = {
+        'nav.how': '工作原理',
+        'nav.features': '功能特性',
+        'nav.quickstart': '快速开始',
+        'hero.title': '像批注设计稿一样<span class="highlight">修改页面</span>',
+        'hero.subtitle': '点击任意 UI，描述你想改什么，PinFix 会让 Claude Code 精准找到源代码并实时完成修改。',
+        'hero.cta': '快速开始',
+        'hero.github': '查看源码',
+        'how.title': '工作原理',
+        'how.subtitle': '从想法到实现只需三步，无需切换窗口。',
+        'how.step1.title': '选择',
+        'how.step1.desc': '按下 Alt+Shift+Z 进入编辑模式，悬停高亮任意元素，点击放置标注点。',
+        'how.step2.title': '描述',
+        'how.step2.desc': '用自然语言输入修改需求。"把这个按钮变大并改成蓝色" — 就这么简单。',
+        'how.step3.title': '完成',
+        'how.step3.desc': 'Claude Code 直接编辑源代码，HMR 即时生效。继续对话可以迭代调整。',
+        'feat.title': '功能特性',
+        'feat.subtitle': 'Claude Code 辅助可视化开发所需的一切。',
+        'feat.visual.title': '可视化选择',
+        'feat.visual.desc': '十字准星模式高亮每个组件，点击固定标注 — 无需搜索文件路径或行号。',
+        'feat.chat.title': '多轮对话',
+        'feat.chat.desc': '支持跨标注点的多轮对话，通过自然对话迭代修改，不丢失上下文。',
+        'feat.hmr.title': '实时热更新',
+        'feat.hmr.desc': '源码编辑触发 HMR 热替换，修改在一秒内生效，无需刷新页面。',
+        'feat.framework.title': '框架无关',
+        'feat.framework.desc': '支持 React、Vue 及任何 JSX/TSX 组件，构建时自动追踪源码位置。',
+        'feat.zero.title': '零配置',
+        'feat.zero.desc': '构建配置中加一行插件即可，服务自动启停。',
+        'feat.dev.title': '仅开发模式',
+        'feat.dev.desc': '生产构建中完全剔除，零运行时开销，不影响用户侧包体积。',
+        'code.title': '快速开始',
+        'code.subtitle': '一分钟内完成配置。',
+        'stack.title': '适配你的技术栈',
+        'stack.subtitle': '一流支持主流构建工具和框架。',
+      };
+
+      let currentLang = 'en';
+      const switchBtn = document.getElementById('lang-switch');
+      const els = document.querySelectorAll('[data-i18n]');
+
+      // Store original English content
+      const enMap = {};
+      els.forEach(el => { enMap[el.dataset.i18n] = el.innerHTML; });
+
+      function setLang(lang) {
+        currentLang = lang;
+        if (lang === 'zh') {
+          els.forEach(el => {
+            const key = el.dataset.i18n;
+            if (zh[key]) el.innerHTML = zh[key];
+          });
+        } else {
+          els.forEach(el => {
+            const key = el.dataset.i18n;
+            if (enMap[key]) el.innerHTML = enMap[key];
+          });
+        }
+        switchBtn.value = lang;
+      }
+
+      switchBtn.addEventListener('change', () => {
+        setLang(switchBtn.value);
+      });
+
+      // Auto-detect browser language
+      if (navigator.language.startsWith('zh')) {
+        setLang('zh');
+      }
+    })();
+  </script>
+
+</body>
+</html>
