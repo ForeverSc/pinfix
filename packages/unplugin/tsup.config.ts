@@ -10,7 +10,7 @@ export default defineConfig([
       rspack: 'src/rspack.ts',
     },
     format: ['esm', 'cjs'],
-    dts: true,
+    dts: { resolve: true },
     clean: true,
     external: ['@vue/compiler-dom'],
     cjsInterop: true,

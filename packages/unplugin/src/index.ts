@@ -13,7 +13,8 @@ function injectHtml(html: string, script: string): string {
   return html.replace('<head>', `<head>\n${script}`)
 }
 
-export const unplugin = createUnplugin((options: PinFixOptions = {}) => {
+export const unplugin = createUnplugin((rawOptions?: PinFixOptions) => {
+  const options = rawOptions ?? {}
   const port = options.port ?? WS_PORT_DEFAULT
   let root = options.root ?? process.cwd()
   const wsUrl = `ws://localhost:${port}`
