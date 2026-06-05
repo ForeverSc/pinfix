@@ -3,3 +3,4 @@ dist
 client-dist
 *.tsbuildinfo
 .DS_Store
+packages/unplugin/README.md
