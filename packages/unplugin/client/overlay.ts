@@ -177,10 +177,14 @@ function bindHotkeys() {
 
   const onKeyDown = (e: KeyboardEvent) => {
     pressed.add(normalizeHotkeyEvent(e))
-    if (isHotkeyPressed(keys, pressed) && !active) {
-      active = true
-      document.body.style.cursor = 'crosshair'
-      if (fabEl) fabEl.classList.add('active')
+    if (isHotkeyPressed(keys, pressed)) {
+      e.preventDefault()
+      e.stopPropagation()
+      if (!active) {
+        active = true
+        document.body.style.cursor = 'crosshair'
+        if (fabEl) fabEl.classList.add('active')
+      }
     }
   }
 
@@ -295,14 +299,14 @@ function bindHotkeys() {
     }
   }
 
-  document.addEventListener('keydown', onKeyDown)
-  document.addEventListener('keyup', onKeyUp)
+  document.addEventListener('keydown', onKeyDown, { capture: true })
+  document.addEventListener('keyup', onKeyUp, { capture: true })
   document.addEventListener('mousemove', onMouseMove)
   document.addEventListener('click', onClick, { capture: true })
   window.addEventListener('blur', onBlur)
   cleanupFns.push(() => {
-    document.removeEventListener('keydown', onKeyDown)
-    document.removeEventListener('keyup', onKeyUp)
+    document.removeEventListener('keydown', onKeyDown, true)
+    document.removeEventListener('keyup', onKeyUp, true)
     document.removeEventListener('mousemove', onMouseMove)
     document.removeEventListener('click', onClick, true)
     window.removeEventListener('blur', onBlur)
