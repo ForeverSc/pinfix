@@ -15,7 +15,7 @@
     "dev:vite-vue": "pnpm --filter example-vite-vue run dev",
     "dev:webpack": "pnpm --filter example-webpack-react run dev",
     "dev:rspack": "pnpm --filter example-rspack-react run dev",
-    "release": "pnpm run build && pnpm --filter @pinfix/plugin publish",
+    "release": "pnpm run build && pnpm --filter @pinfix/plugin publish --access public",
     "test": "vitest run"
   },
   "devDependencies": {

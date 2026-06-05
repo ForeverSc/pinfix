@@ -28,6 +28,9 @@
   },
   "license": "MIT",
   "author": "foreversc",
+  "publishConfig": {
+    "access": "public"
+  },
   "exports": {
     "./vite": {
       "import": "./dist/vite.js",
