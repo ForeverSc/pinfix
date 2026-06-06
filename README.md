@@ -22,9 +22,9 @@
 
 Traditional Claude Code workflows require you to explain *where* in the codebase something needs to change. PinFix flips this — you visually select the element in the browser, and it already knows the exact source file, line, and column. Your conversation starts with full context.
 
-- **Visual Selection** — Alt+Shift+Z activates crosshair mode. Hover to highlight, click to pin.
-- **Multi-turn Chat** — Each pin opens a chat dialog. All pins share a workspace-level Claude Code session, supporting multi-turn conversations with full project context.
-- **Real-time Edits** — Claude Code modifies your source files directly. HMR applies changes instantly.
+- **The page is the context** — Point to what you want to change directly on the UI, no window switching, file paths, or location explanations needed
+- **Real-time edits** — Claude Code updates your source files directly, and HMR shows the result instantly
+- **Visual selection** — Press Alt+Shift+Z to enter crosshair mode, hover to highlight elements, and click to place a pin
 - **Framework Agnostic** — Works with React, Vue, Svelte, or any JSX/TSX-based framework.
 - **Zero Config** — One plugin line in your build config. The channel server spawns and cleans up automatically.
 
