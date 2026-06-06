@@ -1,10 +1,6 @@
 <div align="center">
   <h1>PinFix</h1>
   <p><em>像在设计稿上批注一样修改前端页面。</em></p>
-  <p>
-    点击任意 UI，描述你想改什么，PinFix 会让 Claude Code 精准找到源代码并实时完成修改。<br>
-    无需切换窗口，无需复制文件路径，指哪改哪，HMR 即刻生效。
-  </p>
 </div>
 
 <p align="center">
@@ -17,6 +13,11 @@
 <p align="center">
   <a href="./README.md">English</a>
 </p>
+
+## 预览
+https://github.com/user-attachments/assets/e155481b-5582-476a-a108-4ba637cdb9d4
+> 点击任意 UI，描述你想改什么，PinFix 会让 Claude Code 精准找到源代码并实时完成修改。<br>
+无需切换窗口，无需复制文件路径，指哪改哪，HMR 即刻生效。
 
 ## 为什么选择 PinFix？
 
