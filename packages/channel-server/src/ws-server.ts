@@ -131,8 +131,11 @@ export async function createWsServer(options: WsServerOptions) {
     })
   })
 
-  function handleSessionStart(_ws: WebSocket, pinId: string, source: string, _prompt?: string) {
+  function handleSessionStart(_ws: WebSocket, pinId: string, source: string, prompt?: string) {
     pinContexts.set(pinId, { source })
+    if (prompt !== undefined) {
+      workspacePrompt = prompt || undefined
+    }
     ensureWorkspaceSession()
   }
 

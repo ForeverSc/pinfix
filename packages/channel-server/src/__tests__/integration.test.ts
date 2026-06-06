@@ -296,6 +296,39 @@ describe('Integration: full chat flow', () => {
     ws.close()
   })
 
+  it('uses a prompt from session:start when creating the workspace session', async () => {
+    let firstMessageContent = ''
+    mockedQuery.mockImplementation(({ prompt }) => {
+      const iter = (prompt as AsyncIterable<any>)[Symbol.asyncIterator]()
+      return (async function* () {
+        const first = await iter.next()
+        firstMessageContent = first.value.message.content
+        yield { type: 'result' }
+      })() as any
+    })
+
+    const { port, close } = await createWsServer({ port: 0 })
+    cleanup = close
+
+    const ws = new WebSocket(`ws://localhost:${port}`)
+    await new Promise((r) => ws.on('open', r))
+
+    ws.send(JSON.stringify({
+      type: 'session:start',
+      pinId: 'pin_prompt',
+      source: 'src/App.tsx:10:5',
+      prompt: 'custom system prompt',
+    }))
+    await new Promise((r) => setTimeout(r, 50))
+    ws.send(JSON.stringify({ type: 'chat:send', pinId: 'pin_prompt', content: 'make it blue' }))
+    await waitForMessages(ws, 1)
+
+    expect(firstMessageContent).toContain('custom system prompt')
+    expect(firstMessageContent).not.toContain('You are PinFix, a coding assistant')
+
+    ws.close()
+  })
+
   it('creates a new workspace Claude session only after workspace reset', async () => {
     mockedQuery.mockImplementation(({ prompt }) => {
       const iter = (prompt as AsyncIterable<any>)[Symbol.asyncIterator]()

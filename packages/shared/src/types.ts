@@ -99,7 +99,12 @@ export type ServerMessage = ChatChunkMessage | ChatToolMessage | ChatDoneMessage
 export function isSessionStartMessage(msg: unknown): msg is SessionStartMessage {
   if (typeof msg !== 'object' || msg === null) return false
   const m = msg as Record<string, unknown>
-  return m.type === 'session:start' && typeof m.pinId === 'string' && typeof m.source === 'string'
+  return (
+    m.type === 'session:start' &&
+    typeof m.pinId === 'string' &&
+    typeof m.source === 'string' &&
+    (m.prompt === undefined || typeof m.prompt === 'string')
+  )
 }
 
 export function isChatSendMessage(msg: unknown): msg is ChatSendMessage {

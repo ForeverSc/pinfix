@@ -79,7 +79,7 @@ function connectWs() {
     // Restore sessions for existing pins after reconnect
     for (const pin of pins) {
       if (pin.status !== 'done') {
-        wsSend({ type: 'session:start', pinId: pin.id, source: pin.source })
+        startSession(pin.id, pin.source)
       }
     }
   }
@@ -116,7 +116,7 @@ function connectWs() {
             showGlobalTyping()
             setGlobalStreaming(true)
             wsSend({ type: 'session:end', pinId: pin.id })
-            wsSend({ type: 'session:start', pinId: pin.id, source: pin.source })
+            startSession(pin.id, pin.source)
             wsSend({ type: 'chat:send', pinId: pin.id, content: pin.lastUserContent })
           }
         })
@@ -155,6 +155,11 @@ function wsSend(data: object) {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(data))
   }
+}
+
+function startSession(pinId: string, source: string) {
+  const prompt = getPrompt()
+  wsSend({ type: 'session:start', pinId, source, ...(prompt ? { prompt } : {}) })
 }
 
 function getHotkeyConfig(): { keys: Set<string> } {
@@ -248,7 +253,7 @@ function bindHotkeys() {
     })
 
     // Start session
-    wsSend({ type: 'session:start', pinId: pin.id, source })
+    startSession(pin.id, source)
 
     // Open global dialog (create if first pin, or show+move if exists)
     createOrShowGlobalDialog(
@@ -276,7 +281,7 @@ function bindHotkeys() {
           hideGlobalTyping()
           setGlobalStreaming(false)
           // Restart session so user can continue chatting
-          wsSend({ type: 'session:start', pinId: activePin.id, source: activePin.source })
+          startSession(activePin.id, activePin.source)
         }
       },
       () => {

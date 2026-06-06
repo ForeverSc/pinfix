@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isPinMessage, isWorkspaceResetMessage } from '../types'
+import { isPinMessage, isSessionStartMessage, isWorkspaceResetMessage } from '../types'
 
 describe('isPinMessage', () => {
   it('validates a correct pin message', () => {
@@ -46,5 +46,26 @@ describe('isWorkspaceResetMessage', () => {
 
   it('rejects reset messages with invalid prompt', () => {
     expect(isWorkspaceResetMessage({ type: 'workspace:reset', prompt: 123 })).toBe(false)
+  })
+})
+
+describe('isSessionStartMessage', () => {
+  it('validates session start messages with optional prompt', () => {
+    expect(isSessionStartMessage({ type: 'session:start', pinId: 'pin_01', source: 'src/App.tsx:1:1' })).toBe(true)
+    expect(isSessionStartMessage({
+      type: 'session:start',
+      pinId: 'pin_01',
+      source: 'src/App.tsx:1:1',
+      prompt: 'custom prompt',
+    })).toBe(true)
+  })
+
+  it('rejects session start messages with invalid prompt', () => {
+    expect(isSessionStartMessage({
+      type: 'session:start',
+      pinId: 'pin_01',
+      source: 'src/App.tsx:1:1',
+      prompt: 123,
+    })).toBe(false)
   })
 })
