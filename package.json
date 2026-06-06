@@ -15,13 +15,13 @@
     "dev:vite-vue": "pnpm --filter example-vite-vue run dev",
     "dev:webpack": "pnpm --filter example-webpack-react run dev",
     "dev:rspack": "pnpm --filter example-rspack-react run dev",
-    "changeset": "changeset",
-    "version-packages": "changeset version",
-    "release": "pnpm run build && pnpm test && pnpm changeset publish",
+    "release": "pnpm run build && pnpm test && semantic-release",
     "test": "vitest run"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.31.0",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "semantic-release": "^25.0.3",
     "tsup": "^8.4.0",
     "typescript": "^5.8.0",
     "vitest": "^3.2.0"
