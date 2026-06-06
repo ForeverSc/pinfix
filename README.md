@@ -1,10 +1,6 @@
 <div align="center">
   <h1>PinFix</h1>
   <p><em>Edit frontend pages like leaving comments on a design.</em></p>
-  <p>
-    Click any UI, describe what you want to change, and PinFix lets Claude Code precisely find the source code and apply the edit in real time.<br>
-    No context switching. No copy-pasting file paths. Just point, describe, and see HMR apply the change.
-  </p>
 </div>
 
 <p align="center">
@@ -17,6 +13,14 @@
 <p align="center">
   <a href="./README_ZH.md">中文</a>
 </p>
+
+## Preview
+
+https://github.com/user-attachments/assets/e155481b-5582-476a-a108-4ba637cdb9d4
+
+> Click any UI, describe what you want to change, and PinFix lets Claude Code precisely find the source code and apply the edit in real time.<br>
+No context switching. No copy-pasting file paths. Just point, describe, and see HMR apply the change.
+
 
 ## Why PinFix?
 
