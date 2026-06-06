@@ -3,6 +3,7 @@ import { createHighlight, showHighlight, hideHighlight, findSourceElement } from
 import { createPinId, renderPin, updatePinStatus, createOrShowGlobalDialog, moveDialogToPin, showGlobalDialog, hideGlobalDialog, isGlobalDialogVisible, getActivePinId, setActivePinId, appendGlobalMessage, showGlobalTyping, hideGlobalTyping, showGlobalError, setGlobalStreaming, resetGlobalMessages, destroyGlobalDialog, getPrompt, type Pin } from './pin.js'
 import { OVERLAY_STYLES } from './styles.js'
 import { isHotkeyPressed, normalizeHotkeyEvent, parseHotkey } from './hotkey.js'
+import { isFabDragDistanceExceeded } from './drag.js'
 
 declare const __PINFIX_WS_URL__: string | undefined
 declare const __PINFIX_HOTKEY__: string | undefined
@@ -339,9 +340,13 @@ function renderFab(root: ShadowRoot) {
   fab.addEventListener('mousedown', (e) => {
     e.preventDefault()
     fabDragged = false
+    const startPointer = { x: e.clientX, y: e.clientY }
     const startX = e.clientX - fab.getBoundingClientRect().left
     const startY = e.clientY - fab.getBoundingClientRect().top
     const onMove = (ev: MouseEvent) => {
+      if (!fabDragged && !isFabDragDistanceExceeded(startPointer, { x: ev.clientX, y: ev.clientY })) {
+        return
+      }
       fabDragged = true
       fab.style.right = 'auto'
       fab.style.bottom = 'auto'
