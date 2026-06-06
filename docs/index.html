@@ -108,7 +108,7 @@
 
     /* Hero */
     .hero {
-      padding: 90px 24px 36px;
+      padding: 108px 24px 48px;
       text-align: center;
       background: radial-gradient(ellipse at 50% 0%, rgba(0,112,234,0.12) 0%, transparent 60%);
     }
@@ -341,7 +341,7 @@
 
     /* Mobile */
     @media (max-width: 640px) {
-      .hero { padding: 120px 16px 60px; }
+      .hero { padding: 132px 16px 64px; }
       .hero h1 { font-size: 32px; }
       section { padding: 48px 16px; }
       .nav-links a:not(.nav-btn) { display: none; }
@@ -989,10 +989,21 @@
           btn.style.background = '#ef4444';
         }, 6500);
 
-        // Step 10: Pause then loop
+        // Step 10: Let the completed state settle, then reset smoothly
+        setTimeout(() => {
+          dialog.classList.remove('visible');
+          pin.classList.remove('visible');
+          btn.classList.remove('highlighted');
+        }, 8400);
+
+        setTimeout(() => {
+          btn.style.transition = 'background 0.45s ease';
+          btn.style.background = '';
+        }, 8800);
+
         setTimeout(() => {
           runSequence();
-        }, 9500);
+        }, 10100);
       }
 
       // Start when demo scrolls into view
