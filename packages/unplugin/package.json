@@ -20,10 +20,10 @@
     "ai-coding",
     "devtools"
   ],
-  "homepage": "https://github.com/foreversc/pinfix#readme",
+  "homepage": "https://github.com/ForeverSc/pinfix#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/foreversc/pinfix.git",
+    "url": "https://github.com/ForeverSc/pinfix",
     "directory": "packages/unplugin"
   },
   "license": "MIT",

@@ -5,7 +5,7 @@
   "packageManager": "pnpm@10.26.2",
   "repository": {
     "type": "git",
-    "url": "https://github.com/foreversc/pinfix.git"
+    "url": "https://github.com/ForeverSc/pinfix"
   },
   "license": "MIT",
   "author": "foreversc",
