@@ -247,7 +247,7 @@ function bindHotkeys() {
       } else {
         // Different pin — move dialog to this pin
         setActivePinId(pin.id)
-        moveDialogToPin(pin)
+        moveDialogToPin(pin, { force: true })
         showGlobalDialog()
       }
     })

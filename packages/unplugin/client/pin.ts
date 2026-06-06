@@ -128,7 +128,26 @@ export function hideGlobalDialog() {
   }
 }
 
-export function moveDialogToPin(pin: Pin) {
+export function shouldMoveDialogToPin(wasDragged: boolean, options?: { force?: boolean }): boolean {
+  return Boolean(options?.force) || !wasDragged
+}
+
+export function getDialogDragStart(
+  dialog: HTMLElement,
+  pointer: { x: number; y: number },
+  fallback: { x: number; y: number },
+): { dialogX: number; dialogY: number; dragX: number; dragY: number } {
+  const dialogX = parsePixelValue(dialog.style.left) ?? fallback.x
+  const dialogY = parsePixelValue(dialog.style.top) ?? fallback.y
+  return {
+    dialogX,
+    dialogY,
+    dragX: pointer.x - dialogX,
+    dragY: pointer.y - dialogY,
+  }
+}
+
+export function moveDialogToPin(pin: Pin, options?: { force?: boolean }) {
   if (!globalDialog) return
   // Update path regardless of drag state
   if (globalPathSpan) {
@@ -136,7 +155,8 @@ export function moveDialogToPin(pin: Pin) {
     globalPathSpan.title = pin.source
   }
   // Only reposition if user hasn't manually dragged
-  if (globalDragged) return
+  if (!shouldMoveDialogToPin(globalDragged, options)) return
+  if (options?.force) globalDragged = false
   const x = pin.x + 16
   const y = pin.y - 4
   globalDialog.style.left = `${x}px`
@@ -158,7 +178,7 @@ export function createOrShowGlobalDialog(
   onResetCallback = onResetWorkspaceSession
 
   if (globalDialog) {
-    moveDialogToPin(pin)
+    moveDialogToPin(pin, { force: true })
     showGlobalDialog()
     return globalDialog
   }
@@ -238,8 +258,11 @@ export function createOrShowGlobalDialog(
   function initDrag(e: MouseEvent) {
     if ((e.target as HTMLElement).closest?.('button')) return
     e.preventDefault()
-    dragX = e.clientX - dialogX
-    dragY = e.clientY - dialogY
+    const dragStart = getDialogDragStart(dialog, { x: e.clientX, y: e.clientY }, { x: dialogX, y: dialogY })
+    dialogX = dragStart.dialogX
+    dialogY = dragStart.dialogY
+    dragX = dragStart.dragX
+    dragY = dragStart.dragY
 
     const onMouseMove = (ev: MouseEvent) => {
       globalDragged = true
@@ -574,6 +597,12 @@ export function destroyGlobalDialog() {
 }
 
 // --- Private helpers ---
+
+function parsePixelValue(value: string): number | null {
+  if (!value.endsWith('px')) return null
+  const parsed = Number.parseFloat(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
 
 function switchView(view: 'chat' | 'settings') {
   globalCurrentView = view
