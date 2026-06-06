@@ -327,6 +327,55 @@ describe('Integration: full chat flow', () => {
 
     ws.close()
   })
+
+  it('logs compact turn payloads across multiple turns', async () => {
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+
+    mockedQuery.mockImplementation(({ prompt }) => {
+      const iter = (prompt as AsyncIterable<any>)[Symbol.asyncIterator]()
+      return (async function* () {
+        await iter.next()
+        yield { type: 'result' }
+        await iter.next()
+        yield { type: 'result' }
+      })() as any
+    })
+
+    const { port, close } = await createWsServer({ port: 0, cwd: '/repo/app' })
+    cleanup = close
+
+    const ws = new WebSocket(`ws://localhost:${port}`)
+    await new Promise((r) => ws.on('open', r))
+
+    ws.send(JSON.stringify({ type: 'session:start', pinId: 'pin_1', source: 'src/App.tsx:10:5' }))
+    await new Promise((r) => setTimeout(r, 50))
+    ws.send(JSON.stringify({ type: 'chat:send', pinId: 'pin_1', content: 'first turn content with enough text to inspect' }))
+    await waitForMessages(ws, 1)
+
+    ws.send(JSON.stringify({ type: 'session:start', pinId: 'pin_2', source: 'src/Button.tsx:2:1' }))
+    await new Promise((r) => setTimeout(r, 50))
+    ws.send(JSON.stringify({ type: 'chat:send', pinId: 'pin_2', content: 'second turn content with enough text to inspect' }))
+    await waitForMessages(ws, 1)
+
+    try {
+      const logs = stderrSpy.mock.calls.map(([chunk]) => String(chunk)).join('')
+      expect(logs).toContain('[ws] session start pinId="pin_1" source="src/App.tsx:10:5"')
+      expect(logs).toContain('[ws] turn send workspace=1 turn=1 pinId="pin_1" source="src/App.tsx:10:5" cwd="/repo/app"')
+      expect(logs).toMatch(/\[claude\] send session=\d+ turn=1 cwd="\/repo\/app" context=true/)
+      expect(logs).toContain('[source: src/App.tsx:10:5]\\n\\nfirst turn content with enough text to inspect')
+      expect(logs).toContain('[ws] turn send workspace=1 turn=2 pinId="pin_2" source="src/Button.tsx:2:1" cwd="/repo/app"')
+      expect(logs).toMatch(/\[claude\] send session=\d+ turn=2 cwd="\/repo\/app" context=false/)
+      expect(logs).toContain('[source: src/Button.tsx:2:1]\\n\\nsecond turn content with enough text to inspect')
+      expect(logs).not.toContain('[pinfix:claude]')
+      expect(logs).not.toContain('[pinfix:ws]')
+      expect(logs).not.toContain('query:result')
+      expect(logs).not.toContain('sdk:yield_user_message')
+      expect(logs).not.toContain('You are PinFix, a coding assistant')
+    } finally {
+      ws.close()
+      stderrSpy.mockRestore()
+    }
+  })
 })
 
 describe('Port retry', () => {

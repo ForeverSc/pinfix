@@ -38,10 +38,10 @@ async function main() {
   }, 5000)
   parentCheck.unref()
 
-  process.stderr.write(`[pinfix] channel server ready, ws://localhost:${server.port}\n`)
+  process.stderr.write(`[server] ready port=${server.port} cwd=${JSON.stringify(cwd)}\n`)
 }
 
 main().catch((err) => {
-  process.stderr.write(`[pinfix] fatal: ${err.message}\n`)
+  process.stderr.write(`[server] fatal message=${JSON.stringify(err.message)}\n`)
   process.exit(1)
 })

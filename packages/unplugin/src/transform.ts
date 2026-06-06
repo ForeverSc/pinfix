@@ -43,11 +43,12 @@ export function transformCode(
 }
 
 function transformJsx(code: string, id: string, absolutePath?: string, options?: TransformOptions): { code: string; map: any } | null {
+  const sourceId = id.split('?')[0]
   // Read original source file to get accurate line numbers
   // (code may have been modified by earlier plugins like @vitejs/plugin-react)
   let originalSource: string
   try {
-    const filePath = absolutePath || id
+    const filePath = absolutePath || sourceId
     originalSource = readFileSync(filePath.split('?')[0], 'utf-8')
   } catch {
     originalSource = code
@@ -120,7 +121,7 @@ function transformJsx(code: string, id: string, absolutePath?: string, options?:
         column = origPos.column
       }
 
-      const attrStr = ` ${DATA_ATTR}="${id}:${line}:${column}"`
+      const attrStr = ` ${DATA_ATTR}="${sourceId}:${line}:${column}"`
       const nameEnd = node.name.end!
       s.appendLeft(nameEnd, attrStr)
       hasChanges = true

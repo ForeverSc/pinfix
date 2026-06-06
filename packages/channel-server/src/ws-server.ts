@@ -10,7 +10,21 @@ import type { AISession } from './types.js'
 import { claudeProvider } from './claude-provider.js'
 
 function log(msg: string) {
-  process.stderr.write(`[pinfix:ws] ${msg}\n`)
+  process.stderr.write(`[ws] ${msg}\n`)
+}
+
+function logEvent(event: string, payload: Record<string, unknown> = {}) {
+  const fields = Object.entries(payload)
+    .filter(([, value]) => value !== undefined)
+    .map(([key, value]) => `${key}=${formatValue(value)}`)
+    .join(' ')
+  log(fields ? `${event} ${fields}` : event)
+}
+
+function formatValue(value: unknown): string {
+  if (typeof value === 'string') return JSON.stringify(value)
+  if (value === null) return 'null'
+  return String(value)
 }
 
 interface WsServerOptions {
@@ -54,7 +68,9 @@ export async function createWsServer(options: WsServerOptions) {
   const pinContexts = new Map<string, { source: string }>()
   let workspaceSession: AISession | null = null
   let workspacePrompt: string | undefined
-  let activeTurn: { pinId: string; ws: WebSocket } | null = null
+  let activeTurn: { pinId: string; ws: WebSocket; turnId: number; source: string } | null = null
+  let workspaceSessionId = 0
+  let nextTurnId = 1
 
   const wss = await tryListen(port, maxPortRetries)
   const actualPort = (wss.address() as { port: number }).port
@@ -79,7 +95,6 @@ export async function createWsServer(options: WsServerOptions) {
   wss.on('connection', (ws) => {
     const client = ws as WebSocket & { isAlive?: boolean }
     client.isAlive = true
-    log('client connected')
 
     ws.on('pong', () => {
       client.isAlive = true
@@ -93,25 +108,26 @@ export async function createWsServer(options: WsServerOptions) {
         if (msg.type === 'pong') return
 
         if (isSessionStartMessage(msg)) {
-          log(`session:start pinId=${msg.pinId} source=${msg.source}`)
+          logEvent('session start', {
+            pinId: msg.pinId,
+            source: msg.source,
+            prompt: msg.prompt ? 'custom' : undefined,
+          })
           handleSessionStart(ws, msg.pinId, msg.source, msg.prompt)
         } else if (isChatSendMessage(msg)) {
-          log(`chat:send pinId=${msg.pinId} content="${msg.content.slice(0, 80)}"`)
           handleChatSend(ws, msg.pinId, msg.content)
         } else if (isSessionEndMessage(msg)) {
-          log(`session:end pinId=${msg.pinId}`)
+          logEvent('session end', { pinId: msg.pinId })
           handleSessionEnd(msg.pinId)
         } else if (isWorkspaceResetMessage(msg)) {
-          log('workspace:reset')
+          logEvent('workspace reset', {
+            prompt: msg.prompt ? 'custom' : undefined,
+          })
           handleWorkspaceReset(msg.prompt)
         }
       } catch {
         // ignore malformed messages
       }
-    })
-
-    ws.on('close', () => {
-      log('client disconnected')
     })
   })
 
@@ -124,6 +140,12 @@ export async function createWsServer(options: WsServerOptions) {
     if (workspaceSession) return workspaceSession
 
     const systemPrompt = workspacePrompt || DEFAULT_SYSTEM_PROMPT
+    workspaceSessionId += 1
+    logEvent('workspace session', {
+      workspace: workspaceSessionId,
+      cwd: cwd ?? null,
+      prompt: workspacePrompt ? 'custom' : 'default',
+    })
     const session = claudeProvider.createSession(systemPrompt, cwd)
 
     session.onChunk((text) => {
@@ -140,6 +162,12 @@ export async function createWsServer(options: WsServerOptions) {
       if (!activeTurn) return
       const turn = activeTurn
       activeTurn = null
+      logEvent('turn done', {
+        workspace: workspaceSessionId,
+        turn: turn.turnId,
+        pinId: turn.pinId,
+        source: turn.source,
+      })
       send(turn.ws, { type: 'chat:done', pinId: turn.pinId })
     })
 
@@ -147,6 +175,13 @@ export async function createWsServer(options: WsServerOptions) {
       const turn = activeTurn
       activeTurn = null
       workspaceSession = null
+      logEvent('turn error', {
+        workspace: workspaceSessionId,
+        turn: turn?.turnId ?? null,
+        pinId: turn?.pinId ?? null,
+        source: turn?.source ?? null,
+        error,
+      })
       if (turn) {
         send(turn.ws, { type: 'chat:error', pinId: turn.pinId, error })
       }
@@ -169,13 +204,29 @@ export async function createWsServer(options: WsServerOptions) {
     }
 
     const session = ensureWorkspaceSession()
-    activeTurn = { pinId, ws }
-    session.sendMessage(buildTurnPrompt(pinContext.source, content))
+    const turnId = nextTurnId++
+    const message = buildTurnPrompt(pinContext.source, content)
+    activeTurn = { pinId, ws, turnId, source: pinContext.source }
+    logEvent('turn send', {
+      workspace: workspaceSessionId,
+      turn: turnId,
+      pinId,
+      source: pinContext.source,
+      cwd: cwd ?? null,
+      message,
+    })
+    session.sendMessage(message)
   }
 
   function handleSessionEnd(pinId: string) {
     pinContexts.delete(pinId)
     if (activeTurn?.pinId === pinId) {
+      logEvent('turn cancel', {
+        workspace: workspaceSessionId,
+        turn: activeTurn.turnId,
+        pinId,
+        source: activeTurn.source,
+      })
       activeTurn = null
       if (workspaceSession) {
         workspaceSession.kill()

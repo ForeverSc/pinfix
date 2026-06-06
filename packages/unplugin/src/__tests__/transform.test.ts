@@ -83,7 +83,8 @@ describe('file type routing', () => {
     const code = `function App() { return <div>hi</div> }`
     const result = transformCode(code, 'src/App.tsx?query=1')
     expect(result).not.toBeNull()
-    expect(result!.code).toContain('data-pinfix-source')
+    expect(result!.code).toContain('data-pinfix-source="src/App.tsx:')
+    expect(result!.code).not.toContain('data-pinfix-source="src/App.tsx?query=1:')
   })
 
   it('routes .vue?type=template to Vue transform', () => {

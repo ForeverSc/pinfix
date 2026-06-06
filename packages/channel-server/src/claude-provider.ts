@@ -2,10 +2,27 @@ import { query, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
 import type { AIProvider, AISession } from './types.js'
 
 function log(msg: string) {
-  process.stderr.write(`[pinfix:claude] ${msg}\n`)
+  process.stderr.write(`[claude] ${msg}\n`)
 }
 
+function logEvent(event: string, payload: Record<string, unknown> = {}) {
+  const fields = Object.entries(payload)
+    .filter(([, value]) => value !== undefined)
+    .map(([key, value]) => `${key}=${formatValue(value)}`)
+    .join(' ')
+  log(fields ? `${event} ${fields}` : event)
+}
+
+function formatValue(value: unknown): string {
+  if (typeof value === 'string') return JSON.stringify(value)
+  if (value === null) return 'null'
+  return String(value)
+}
+
+let nextSessionId = 1
+
 export function createClaudeSession(contextPrefix: string, cwd?: string): AISession {
+  const sessionId = nextSessionId++
   let chunkCb: ((text: string) => void) | null = null
   let toolCb: ((toolName: string) => void) | null = null
   let doneCb: (() => void) | null = null
@@ -17,6 +34,7 @@ export function createClaudeSession(contextPrefix: string, cwd?: string): AISess
   // Resolve function for the next user message
   let resolveNextMessage: ((value: SDKUserMessage) => void) | null = null
   let firstMessage = true
+  let turnId = 0
 
   // Async generator that yields user messages on demand
   async function* userMessages(): AsyncGenerator<SDKUserMessage> {
@@ -32,7 +50,6 @@ export function createClaudeSession(contextPrefix: string, cwd?: string): AISess
   // Start the query with streaming input
   async function startSession() {
     try {
-      log('starting claude query...')
       const stream = query({
         prompt: userMessages(),
         options: {
@@ -55,7 +72,7 @@ export function createClaudeSession(contextPrefix: string, cwd?: string): AISess
           // Tool use start - notify separately
           if (event.type === 'content_block_start' && event.content_block?.type === 'tool_use') {
             const toolName = event.content_block.name
-            log(`tool_use: ${toolName}`)
+            logEvent('tool', { name: toolName })
             if (toolCb) toolCb(toolName)
           }
         }
@@ -66,7 +83,6 @@ export function createClaudeSession(contextPrefix: string, cwd?: string): AISess
         }
 
         if (message.type === 'result') {
-          log('claude query complete')
           if (doneCb) doneCb()
         }
       }
@@ -74,7 +90,7 @@ export function createClaudeSession(contextPrefix: string, cwd?: string): AISess
       if (!killed) {
         const errorMessage = err.message || 'Unknown error'
         startupError = errorMessage
-        log(`claude error: ${errorMessage}`)
+        logEvent('error', { session: sessionId, message: errorMessage })
         if (errorCb) errorCb(errorMessage)
       }
     }
@@ -88,29 +104,40 @@ export function createClaudeSession(contextPrefix: string, cwd?: string): AISess
       if (errorCb) errorCb(startupError)
       return
     }
+    turnId += 1
     let prompt = content
+    const includesContextPrefix = firstMessage && Boolean(contextPrefix)
     if (firstMessage) {
       if (contextPrefix) {
         prompt = `${contextPrefix}\n\n${content}`
       }
       firstMessage = false
     }
-    log(`sending to claude: "${prompt.slice(0, 100)}"`)
+    const sdkMessage: SDKUserMessage = {
+      type: 'user',
+      message: { role: 'user', content: prompt },
+      parent_tool_use_id: null,
+    }
+    logEvent('send', {
+      session: sessionId,
+      turn: turnId,
+      cwd: cwd ?? null,
+      context: includesContextPrefix,
+    })
     if (resolveNextMessage) {
       const resolve = resolveNextMessage
       resolveNextMessage = null
-      resolve({
-        type: 'user',
-        message: { role: 'user', content: prompt },
-        parent_tool_use_id: null,
-      })
+      resolve(sdkMessage)
     } else {
-      log('warning: no pending resolve, message may be lost')
+      logEvent('send-lost', {
+        session: sessionId,
+        turn: turnId,
+        content: sdkMessage.message.content,
+      })
     }
   }
 
   function kill() {
-    log('session killed')
     killed = true
     chunkCb = null
     toolCb = null
