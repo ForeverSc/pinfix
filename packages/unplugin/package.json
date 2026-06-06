@@ -48,8 +48,8 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "prepublishOnly": "cp ../../README.md .",
-    "postpublish": "rm -f README.md"
+    "prepack": "node ../../scripts/sync-package-readmes.mjs",
+    "postpack": "node ../../scripts/clean-package-readmes.mjs"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.160",
@@ -69,6 +69,7 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "README_ZH.md"
   ]
 }
