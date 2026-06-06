@@ -9,7 +9,7 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@pinfix/plugin"><img src="https://img.shields.io/npm/v/%40pinfix%2Fplugin?label=version&style=flat-square&color=0070ea" alt="Version"></a>
-  <img src="https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite">
+  <img src="https://img.shields.io/badge/Vite-5-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite">
   <img src="https://img.shields.io/badge/Webpack-5-8DD6F9?style=flat-square&logo=webpack&logoColor=black" alt="Webpack">
   <img src="https://img.shields.io/badge/Rspack-2-FF6600?style=flat-square&logo=rspack&logoColor=white" alt="Rspack">
 </p>
