@@ -31,6 +31,11 @@ export interface Pin {
 declare const __PINFIX_PROMPT__: string | undefined
 
 const PROMPT_STORAGE_KEY = 'pinfix-prompt'
+const DIALOG_WIDTH = 320
+const DIALOG_HEIGHT = 448
+const DIALOG_MARGIN = 8
+const DIALOG_PIN_GAP = 16
+const DIALOG_PIN_Y_OFFSET = -4
 
 let pinCounter = 0
 
@@ -147,6 +152,22 @@ export function getDialogDragStart(
   }
 }
 
+export function getDialogPositionNearPin(
+  pin: { x: number; y: number },
+  dialogSize: { width: number; height: number },
+  viewport: { width: number; height: number },
+  margin = DIALOG_MARGIN,
+): { x: number; y: number } {
+  const preferredX = pin.x + DIALOG_PIN_GAP
+  const preferredY = pin.y + DIALOG_PIN_Y_OFFSET
+  const maxX = Math.max(margin, viewport.width - dialogSize.width - margin)
+  const maxY = Math.max(margin, viewport.height - dialogSize.height - margin)
+  return {
+    x: clamp(preferredX, margin, maxX),
+    y: clamp(preferredY, margin, maxY),
+  }
+}
+
 export function moveDialogToPin(pin: Pin, options?: { force?: boolean }) {
   if (!globalDialog) return
   // Update path regardless of drag state
@@ -157,10 +178,7 @@ export function moveDialogToPin(pin: Pin, options?: { force?: boolean }) {
   // Only reposition if user hasn't manually dragged
   if (!shouldMoveDialogToPin(globalDragged, options)) return
   if (options?.force) globalDragged = false
-  const x = pin.x + 16
-  const y = pin.y - 4
-  globalDialog.style.left = `${x}px`
-  globalDialog.style.top = `${y}px`
+  positionDialogNearPin(globalDialog, pin)
 }
 
 export function createOrShowGlobalDialog(
@@ -189,8 +207,8 @@ export function createOrShowGlobalDialog(
   dialog.className = 'pinfix-chat'
   Object.assign(dialog.style, {
     position: 'fixed',
-    left: `${pin.x + 16}px`,
-    top: `${pin.y - 4}px`,
+    left: `${pin.x + DIALOG_PIN_GAP}px`,
+    top: `${pin.y + DIALOG_PIN_Y_OFFSET}px`,
     zIndex: '99999',
   })
 
@@ -410,6 +428,7 @@ export function createOrShowGlobalDialog(
 
   root.appendChild(dialog)
   globalDialog = dialog
+  positionDialogNearPin(dialog, pin)
 
   setTimeout(() => textarea.focus(), 0)
 
@@ -602,6 +621,31 @@ function parsePixelValue(value: string): number | null {
   if (!value.endsWith('px')) return null
   const parsed = Number.parseFloat(value)
   return Number.isFinite(parsed) ? parsed : null
+}
+
+function positionDialogNearPin(dialog: HTMLElement, pin: Pin) {
+  const position = getDialogPositionNearPin(pin, getDialogSize(dialog), getViewportSize())
+  dialog.style.left = `${position.x}px`
+  dialog.style.top = `${position.y}px`
+}
+
+function getDialogSize(dialog: HTMLElement): { width: number; height: number } {
+  const rect = dialog.getBoundingClientRect()
+  return {
+    width: rect.width || DIALOG_WIDTH,
+    height: rect.height || DIALOG_HEIGHT,
+  }
+}
+
+function getViewportSize(): { width: number; height: number } {
+  return {
+    width: window.innerWidth || document.documentElement.clientWidth,
+    height: window.innerHeight || document.documentElement.clientHeight,
+  }
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max)
 }
 
 function switchView(view: 'chat' | 'settings') {
