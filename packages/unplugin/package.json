@@ -1,6 +1,6 @@
 {
   "name": "@pinfix/plugin",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Visual UI annotation overlay for Claude Code-powered source editing in dev servers.",
   "type": "module",
   "keywords": [

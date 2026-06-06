@@ -1,5 +1,12 @@
 # @pinfix/plugin Changelog
 
+## [1.0.3](https://github.com/ForeverSc/pinfix/compare/@pinfix/plugin@1.0.2...@pinfix/plugin@1.0.3) (2026-06-06)
+
+
+### Bug Fixes
+
+* align repository url for npm provenance ([87c5d48](https://github.com/ForeverSc/pinfix/commit/87c5d48ae814dec7a0886c4d84431c5eaa88045a))
+
 ## [1.0.2](https://github.com/foreversc/pinfix/compare/@pinfix/plugin@1.0.1...@pinfix/plugin@1.0.2) (2026-06-06)
 
 
