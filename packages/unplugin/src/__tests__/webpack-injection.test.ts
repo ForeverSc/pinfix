@@ -22,14 +22,19 @@ type BundlerAdapter = 'webpack' | 'rspack'
 
 function createCompiler(adapter: BundlerAdapter = 'webpack', options?: { watchMode?: boolean }) {
   let compilationCallback: ((compilation: any) => void) | undefined
-  let processAssetsTap: { options: any; callback: (assets: Record<string, any>, cb: () => void) => void } | undefined
+  let processAssetsTap:
+    | { options: any; callback: (assets: Record<string, any>, cb: () => void) => void }
+    | undefined
   let beforeEmitTap: ((data: { html: string }) => Promise<{ html: string }>) | undefined
 
   class FakeHtmlPlugin {
     static getCompilationHooks() {
       return {
         beforeEmit: {
-          tapPromise(_options: any, callback: (data: { html: string }) => Promise<{ html: string }>) {
+          tapPromise(
+            _options: any,
+            callback: (data: { html: string }) => Promise<{ html: string }>,
+          ) {
             beforeEmitTap = callback
           },
         },
@@ -146,9 +151,7 @@ describe.each<BundlerAdapter>(['webpack', 'rspack'])('%s HTML injection', (adapt
 
     await beforeEmit?.({ html: '<html><head></head><body></body></html>' })
 
-    expect(startChannelServer).toHaveBeenCalledWith(
-      expect.objectContaining({ port: 24817 }),
-    )
+    expect(startChannelServer).toHaveBeenCalledWith(expect.objectContaining({ port: 24817 }))
     expect(getInjectionScript).toHaveBeenCalledWith(
       expect.objectContaining({ wsUrl: 'ws://localhost:24817' }),
     )

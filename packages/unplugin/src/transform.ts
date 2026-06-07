@@ -22,10 +22,7 @@ export function transformCode(
   const params = new URLSearchParams(query || '')
 
   // Vue JSX blocks → JSX path
-  if (filePath.endsWith('.vue') && (
-    params.get('lang') === 'tsx' ||
-    params.get('lang') === 'jsx'
-  )) {
+  if (filePath.endsWith('.vue') && (params.get('lang') === 'tsx' || params.get('lang') === 'jsx')) {
     return transformJsx(code, id, absolutePath, options)
   }
 
@@ -42,7 +39,12 @@ export function transformCode(
   return null
 }
 
-function transformJsx(code: string, id: string, absolutePath?: string, options?: TransformOptions): { code: string; map: any } | null {
+function transformJsx(
+  code: string,
+  id: string,
+  absolutePath?: string,
+  options?: TransformOptions,
+): { code: string; map: any } | null {
   const sourceId = id.split('?')[0]
   // Read original source file to get accurate line numbers
   // (code may have been modified by earlier plugins like @vitejs/plugin-react)
@@ -129,7 +131,10 @@ function transformJsx(code: string, id: string, absolutePath?: string, options?:
   })
 
   if (!hasChanges) return null
-  return { code: s.toString(), map: s.generateMap({ source: id, hires: true, includeContent: true }) }
+  return {
+    code: s.toString(),
+    map: s.generateMap({ source: id, hires: true, includeContent: true }),
+  }
 }
 
 function getJsxName(node: any): string {
@@ -144,12 +149,14 @@ function getJsxName(node: any): string {
 }
 
 function isEscaped(tagName: string, escapeTags: (string | RegExp)[]): boolean {
-  return escapeTags.some(tag =>
-    typeof tag === 'string' ? tag === tagName : tag.test(tagName),
-  )
+  return escapeTags.some((tag) => (typeof tag === 'string' ? tag === tagName : tag.test(tagName)))
 }
 
-function transformVue(code: string, id: string, options?: TransformOptions): { code: string; map: any } | null {
+function transformVue(
+  code: string,
+  id: string,
+  options?: TransformOptions,
+): { code: string; map: any } | null {
   const ast = vueParse(code, { comments: true })
 
   // Find the <template> root node
@@ -193,5 +200,8 @@ function transformVue(code: string, id: string, options?: TransformOptions): { c
   }
 
   if (!hasChanges) return null
-  return { code: s.toString(), map: s.generateMap({ source: id, hires: true, includeContent: true }) }
+  return {
+    code: s.toString(),
+    map: s.generateMap({ source: id, hires: true, includeContent: true }),
+  }
 }

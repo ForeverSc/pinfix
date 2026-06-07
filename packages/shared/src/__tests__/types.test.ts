@@ -51,21 +51,27 @@ describe('isWorkspaceResetMessage', () => {
 
 describe('isSessionStartMessage', () => {
   it('validates session start messages with optional prompt', () => {
-    expect(isSessionStartMessage({ type: 'session:start', pinId: 'pin_01', source: 'src/App.tsx:1:1' })).toBe(true)
-    expect(isSessionStartMessage({
-      type: 'session:start',
-      pinId: 'pin_01',
-      source: 'src/App.tsx:1:1',
-      prompt: 'custom prompt',
-    })).toBe(true)
+    expect(
+      isSessionStartMessage({ type: 'session:start', pinId: 'pin_01', source: 'src/App.tsx:1:1' }),
+    ).toBe(true)
+    expect(
+      isSessionStartMessage({
+        type: 'session:start',
+        pinId: 'pin_01',
+        source: 'src/App.tsx:1:1',
+        prompt: 'custom prompt',
+      }),
+    ).toBe(true)
   })
 
   it('rejects session start messages with invalid prompt', () => {
-    expect(isSessionStartMessage({
-      type: 'session:start',
-      pinId: 'pin_01',
-      source: 'src/App.tsx:1:1',
-      prompt: 123,
-    })).toBe(false)
+    expect(
+      isSessionStartMessage({
+        type: 'session:start',
+        pinId: 'pin_01',
+        source: 'src/App.tsx:1:1',
+        prompt: 123,
+      }),
+    ).toBe(false)
   })
 })

@@ -9,9 +9,7 @@ let watchedServerBin: string | null = null
 let restartTimer: ReturnType<typeof setTimeout> | null = null
 
 function getRuntimeDir(): string {
-  return typeof __dirname === 'string'
-    ? __dirname
-    : dirname(fileURLToPath(import.meta.url))
+  return typeof __dirname === 'string' ? __dirname : dirname(fileURLToPath(import.meta.url))
 }
 
 interface StartChannelServerOptions {
@@ -40,14 +38,19 @@ function cleanStalePid(cwd: string) {
   } catch {
     // File read error, ignore
   }
-  try { unlinkSync(pidFile) } catch {}
+  try {
+    unlinkSync(pidFile)
+  } catch {}
 }
 
 function getServerBin(): string {
   return resolve(getRuntimeDir(), 'channel-server.js')
 }
 
-function spawnChannelServer(options: StartChannelServerOptions, serverBin: string): ChildProcess | null {
+function spawnChannelServer(
+  options: StartChannelServerOptions,
+  serverBin: string,
+): ChildProcess | null {
   if (!existsSync(serverBin)) {
     options.onError?.(`channel-server entry not found: ${serverBin}`)
     return null

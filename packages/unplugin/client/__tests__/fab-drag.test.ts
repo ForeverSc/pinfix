@@ -7,6 +7,8 @@ describe('fab drag threshold', () => {
   })
 
   it('treats intentional movement as a drag', () => {
-    expect(isFabDragDistanceExceeded({ x: 100, y: 100 }, { x: 100 + FAB_DRAG_THRESHOLD_PX + 1, y: 100 })).toBe(true)
+    expect(
+      isFabDragDistanceExceeded({ x: 100, y: 100 }, { x: 100 + FAB_DRAG_THRESHOLD_PX + 1, y: 100 }),
+    ).toBe(true)
   })
 })

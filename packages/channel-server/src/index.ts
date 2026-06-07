@@ -20,7 +20,9 @@ async function main() {
   writeFileSync(pidFile, String(process.pid))
 
   function cleanup() {
-    try { unlinkSync(pidFile) } catch {}
+    try {
+      unlinkSync(pidFile)
+    } catch {}
     server.close()
     process.exit(0)
   }

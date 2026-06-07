@@ -80,14 +80,20 @@ export const unplugin = createUnplugin((rawOptions?: PinFixOptions) => {
       root = compiler.context
     }
 
-    if (compiler.watchMode || process.env.WEBPACK_SERVE === 'true' || process.env.RSPACK_SERVE === 'true') {
+    if (
+      compiler.watchMode ||
+      process.env.WEBPACK_SERVE === 'true' ||
+      process.env.RSPACK_SERVE === 'true'
+    ) {
       void startServer()
     }
 
     if (compiler.hooks?.watchRun?.tapPromise) {
       compiler.hooks.watchRun.tapPromise('pinfix', startServer)
     } else {
-      compiler.hooks?.watchRun?.tap('pinfix', () => { void startServer() })
+      compiler.hooks?.watchRun?.tap('pinfix', () => {
+        void startServer()
+      })
     }
 
     // Cleanup on shutdown
@@ -104,11 +110,16 @@ export const unplugin = createUnplugin((rawOptions?: PinFixOptions) => {
       const htmlPluginCtors = new Set<any>(
         (compiler.options?.plugins ?? [])
           .map((plugin: any) => plugin?.constructor)
-          .filter((ctor: any) => typeof ctor?.getHooks === 'function' || typeof ctor?.getCompilationHooks === 'function'),
+          .filter(
+            (ctor: any) =>
+              typeof ctor?.getHooks === 'function' ||
+              typeof ctor?.getCompilationHooks === 'function',
+          ),
       )
 
       for (const HtmlPlugin of htmlPluginCtors) {
-        const hooks = HtmlPlugin.getHooks?.(compilation) ?? HtmlPlugin.getCompilationHooks?.(compilation)
+        const hooks =
+          HtmlPlugin.getHooks?.(compilation) ?? HtmlPlugin.getCompilationHooks?.(compilation)
         if (!hooks?.beforeEmit?.tapPromise) continue
         hooks.beforeEmit.tapPromise({ name: 'pinfix' }, async (data: any) => {
           const script = await createInjectionScript()
@@ -168,7 +179,9 @@ export const unplugin = createUnplugin((rawOptions?: PinFixOptions) => {
       const [absFilePath] = id.split('?', 2)
       if (absFilePath.startsWith(root)) {
         const rel = absFilePath.slice(root.length)
-        relativePath = (rel.startsWith('/') ? rel.slice(1) : rel) + (id.includes('?') ? '?' + id.split('?')[1] : '')
+        relativePath =
+          (rel.startsWith('/') ? rel.slice(1) : rel) +
+          (id.includes('?') ? '?' + id.split('?')[1] : '')
       }
 
       const relFile = relativePath.split('?')[0]
@@ -232,14 +245,16 @@ export const unplugin = createUnplugin((rawOptions?: PinFixOptions) => {
             void (async () => {
               const port = await ensureSelectedPort()
               res.setHeader('Content-Type', 'application/javascript')
-              res.end([
-                `window.__PINFIX_WS_URL__ = ${JSON.stringify(getWsUrl(port))};`,
-                `window.__PINFIX_WORKSPACE_ID__ = ${JSON.stringify(getWorkspaceId())};`,
-                `window.__PINFIX_PROMPT__ = ${JSON.stringify(options.prompt ?? '')};`,
-                `window.__PINFIX_HOTKEY__ = ${JSON.stringify(options.hotkey ?? 'alt+shift+z')};`,
-                `window.__PINFIX_FAB__ = ${JSON.stringify(options.fab !== false)};`,
-                `import "${clientDir}/overlay.ts";`,
-              ].join('\n'))
+              res.end(
+                [
+                  `window.__PINFIX_WS_URL__ = ${JSON.stringify(getWsUrl(port))};`,
+                  `window.__PINFIX_WORKSPACE_ID__ = ${JSON.stringify(getWorkspaceId())};`,
+                  `window.__PINFIX_PROMPT__ = ${JSON.stringify(options.prompt ?? '')};`,
+                  `window.__PINFIX_HOTKEY__ = ${JSON.stringify(options.hotkey ?? 'alt+shift+z')};`,
+                  `window.__PINFIX_FAB__ = ${JSON.stringify(options.fab !== false)};`,
+                  `import "${clientDir}/overlay.ts";`,
+                ].join('\n'),
+              )
             })().catch(next)
             return
           }

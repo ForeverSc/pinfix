@@ -5,7 +5,9 @@ import { createWsServer } from '../ws-server'
 describe('WebSocket server', () => {
   let cleanup: (() => void) | undefined
 
-  afterEach(() => { cleanup?.() })
+  afterEach(() => {
+    cleanup?.()
+  })
 
   it('ignores malformed messages', async () => {
     const { port, close } = await createWsServer({ port: 0 })
@@ -33,11 +35,13 @@ describe('WebSocket server', () => {
       messages.push(JSON.parse(raw.toString()))
     })
 
-    ws.send(JSON.stringify({
-      type: 'chat:send',
-      pinId: 'pin_01',
-      content: 'hello',
-    }))
+    ws.send(
+      JSON.stringify({
+        type: 'chat:send',
+        pinId: 'pin_01',
+        content: 'hello',
+      }),
+    )
 
     await new Promise((r) => setTimeout(r, 100))
     ws.close()

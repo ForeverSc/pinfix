@@ -11,30 +11,8 @@ import { query } from '@anthropic-ai/claude-agent-sdk'
 
 const mockedQuery = vi.mocked(query)
 
-function createMockStream(chunks: string[], delayMs = 10) {
-  return async function* () {
-    for (const chunk of chunks) {
-      await new Promise((r) => setTimeout(r, delayMs))
-      yield {
-        type: 'stream_event',
-        event: {
-          type: 'content_block_delta',
-          delta: { type: 'text_delta', text: chunk },
-        },
-      }
-    }
-    yield { type: 'result' }
-  }
-}
-
-function createErrorStream(errorMessage: string) {
-  return async function* () {
-    throw new Error(errorMessage)
-  }
-}
-
 function waitForMessages(ws: WebSocket, count: number, timeoutMs = 5000): Promise<any[]> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const messages: any[] = []
     const timeout = setTimeout(() => {
       resolve(messages) // resolve with what we have
@@ -151,7 +129,13 @@ describe('Integration: full chat flow', () => {
 
     const msgPromise = waitForMessages(ws, 1, 1000)
 
-    ws.send(JSON.stringify({ type: 'session:start', pinId: 'pin_startup_error', source: 'src/App.tsx:5:1' }))
+    ws.send(
+      JSON.stringify({
+        type: 'session:start',
+        pinId: 'pin_startup_error',
+        source: 'src/App.tsx:5:1',
+      }),
+    )
     await new Promise((r) => setTimeout(r, 50))
     ws.send(JSON.stringify({ type: 'chat:send', pinId: 'pin_startup_error', content: 'hello' }))
 
@@ -210,11 +194,17 @@ describe('Integration: full chat flow', () => {
         await iter.next()
         yield {
           type: 'stream_event',
-          event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Editing file...' } },
+          event: {
+            type: 'content_block_delta',
+            delta: { type: 'text_delta', text: 'Editing file...' },
+          },
         }
         yield {
           type: 'stream_event',
-          event: { type: 'content_block_start', content_block: { type: 'tool_use', name: 'write_file' } },
+          event: {
+            type: 'content_block_start',
+            content_block: { type: 'tool_use', name: 'write_file' },
+          },
         }
         yield {
           type: 'stream_event',
@@ -239,7 +229,7 @@ describe('Integration: full chat flow', () => {
     const messages = await msgPromise
 
     // Should have: chunk (text), tool (write_file), chunk (text), done
-    const toolMsgs = messages.filter(m => m.type === 'chat:tool')
+    const toolMsgs = messages.filter((m) => m.type === 'chat:tool')
     expect(toolMsgs.length).toBe(1)
     expect(toolMsgs[0].tool).toBe('write_file')
     expect(messages[messages.length - 1].type).toBe('chat:done')
@@ -313,12 +303,14 @@ describe('Integration: full chat flow', () => {
     const ws = new WebSocket(`ws://localhost:${port}`)
     await new Promise((r) => ws.on('open', r))
 
-    ws.send(JSON.stringify({
-      type: 'session:start',
-      pinId: 'pin_prompt',
-      source: 'src/App.tsx:10:5',
-      prompt: 'custom system prompt',
-    }))
+    ws.send(
+      JSON.stringify({
+        type: 'session:start',
+        pinId: 'pin_prompt',
+        source: 'src/App.tsx:10:5',
+        prompt: 'custom system prompt',
+      }),
+    )
     await new Promise((r) => setTimeout(r, 50))
     ws.send(JSON.stringify({ type: 'chat:send', pinId: 'pin_prompt', content: 'make it blue' }))
     await waitForMessages(ws, 1)
@@ -382,23 +374,43 @@ describe('Integration: full chat flow', () => {
 
     ws.send(JSON.stringify({ type: 'session:start', pinId: 'pin_1', source: 'src/App.tsx:10:5' }))
     await new Promise((r) => setTimeout(r, 50))
-    ws.send(JSON.stringify({ type: 'chat:send', pinId: 'pin_1', content: 'first turn content with enough text to inspect' }))
+    ws.send(
+      JSON.stringify({
+        type: 'chat:send',
+        pinId: 'pin_1',
+        content: 'first turn content with enough text to inspect',
+      }),
+    )
     await waitForMessages(ws, 1)
 
     ws.send(JSON.stringify({ type: 'session:start', pinId: 'pin_2', source: 'src/Button.tsx:2:1' }))
     await new Promise((r) => setTimeout(r, 50))
-    ws.send(JSON.stringify({ type: 'chat:send', pinId: 'pin_2', content: 'second turn content with enough text to inspect' }))
+    ws.send(
+      JSON.stringify({
+        type: 'chat:send',
+        pinId: 'pin_2',
+        content: 'second turn content with enough text to inspect',
+      }),
+    )
     await waitForMessages(ws, 1)
 
     try {
       const logs = stderrSpy.mock.calls.map(([chunk]) => String(chunk)).join('')
       expect(logs).toContain('[ws] session start pinId="pin_1" source="src/App.tsx:10:5"')
-      expect(logs).toContain('[ws] turn send workspace=1 turn=1 pinId="pin_1" source="src/App.tsx:10:5" cwd="/repo/app"')
+      expect(logs).toContain(
+        '[ws] turn send workspace=1 turn=1 pinId="pin_1" source="src/App.tsx:10:5" cwd="/repo/app"',
+      )
       expect(logs).toMatch(/\[claude\] send session=\d+ turn=1 cwd="\/repo\/app" context=true/)
-      expect(logs).toContain('[source: src/App.tsx:10:5]\\n\\nfirst turn content with enough text to inspect')
-      expect(logs).toContain('[ws] turn send workspace=1 turn=2 pinId="pin_2" source="src/Button.tsx:2:1" cwd="/repo/app"')
+      expect(logs).toContain(
+        '[source: src/App.tsx:10:5]\\n\\nfirst turn content with enough text to inspect',
+      )
+      expect(logs).toContain(
+        '[ws] turn send workspace=1 turn=2 pinId="pin_2" source="src/Button.tsx:2:1" cwd="/repo/app"',
+      )
       expect(logs).toMatch(/\[claude\] send session=\d+ turn=2 cwd="\/repo\/app" context=false/)
-      expect(logs).toContain('[source: src/Button.tsx:2:1]\\n\\nsecond turn content with enough text to inspect')
+      expect(logs).toContain(
+        '[source: src/Button.tsx:2:1]\\n\\nsecond turn content with enough text to inspect',
+      )
       expect(logs).not.toContain('[pinfix:claude]')
       expect(logs).not.toContain('[pinfix:ws]')
       expect(logs).not.toContain('query:result')

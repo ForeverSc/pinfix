@@ -3,9 +3,7 @@ import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
 
 function getRuntimeDir(): string {
-  return typeof __dirname === 'string'
-    ? __dirname
-    : dirname(fileURLToPath(import.meta.url))
+  return typeof __dirname === 'string' ? __dirname : dirname(fileURLToPath(import.meta.url))
 }
 
 /**

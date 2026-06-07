@@ -60,7 +60,12 @@ export interface WorkspaceResetMessage {
   prompt?: string
 }
 
-export type ClientMessage = PinMessage | SessionStartMessage | ChatSendMessage | SessionEndMessage | WorkspaceResetMessage
+export type ClientMessage =
+  | PinMessage
+  | SessionStartMessage
+  | ChatSendMessage
+  | SessionEndMessage
+  | WorkspaceResetMessage
 
 // Chat protocol messages (server → client)
 export interface ChatChunkMessage {
@@ -94,7 +99,12 @@ export interface PongMessage {
   type: 'pong'
 }
 
-export type ServerMessage = ChatChunkMessage | ChatToolMessage | ChatDoneMessage | ChatErrorMessage | PingMessage
+export type ServerMessage =
+  | ChatChunkMessage
+  | ChatToolMessage
+  | ChatDoneMessage
+  | ChatErrorMessage
+  | PingMessage
 
 export function isSessionStartMessage(msg: unknown): msg is SessionStartMessage {
   if (typeof msg !== 'object' || msg === null) return false

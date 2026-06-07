@@ -1,6 +1,26 @@
 import { DATA_ATTR } from '@pinfix/shared'
 import { createHighlight, showHighlight, hideHighlight, findSourceElement } from './highlight.js'
-import { createPinId, renderPin, updatePinStatus, createOrShowGlobalDialog, moveDialogToPin, showGlobalDialog, hideGlobalDialog, isGlobalDialogVisible, getActivePinId, setActivePinId, appendGlobalMessage, showGlobalTyping, hideGlobalTyping, showGlobalError, setGlobalStreaming, resetGlobalMessages, destroyGlobalDialog, getPrompt, type Pin } from './pin.js'
+import {
+  createPinId,
+  renderPin,
+  updatePinStatus,
+  createOrShowGlobalDialog,
+  moveDialogToPin,
+  showGlobalDialog,
+  hideGlobalDialog,
+  isGlobalDialogVisible,
+  getActivePinId,
+  setActivePinId,
+  appendGlobalMessage,
+  showGlobalTyping,
+  hideGlobalTyping,
+  showGlobalError,
+  setGlobalStreaming,
+  resetGlobalMessages,
+  destroyGlobalDialog,
+  getPrompt,
+  type Pin,
+} from './pin.js'
 import { OVERLAY_STYLES } from './styles.js'
 import { isHotkeyPressed, normalizeHotkeyEvent, parseHotkey } from './hotkey.js'
 import { isFabDragDistanceExceeded } from './drag.js'
@@ -24,7 +44,7 @@ const pins: Pin[] = []
 let reconnectDelay = 1000
 let heartbeatTimer: ReturnType<typeof setTimeout> | null = null
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
-let cleanupFns: Array<() => void> = []
+const cleanupFns: Array<() => void> = []
 let disposed = false
 let fabEl: HTMLElement | null = null
 
@@ -98,7 +118,7 @@ function connectWs() {
         return
       }
 
-      const pin = pins.find(p => p.id === msg.pinId)
+      const pin = pins.find((p) => p.id === msg.pinId)
       if (!pin) return
 
       if (msg.type === 'chat:chunk') {
@@ -176,7 +196,8 @@ function getHotkeyConfig(): { keys: Set<string> } {
 
 function isFabEnabled(): boolean {
   if (typeof __PINFIX_FAB__ !== 'undefined') return __PINFIX_FAB__
-  if (typeof window !== 'undefined' && (window as any).__PINFIX_FAB__ !== undefined) return (window as any).__PINFIX_FAB__
+  if (typeof window !== 'undefined' && (window as any).__PINFIX_FAB__ !== undefined)
+    return (window as any).__PINFIX_FAB__
   return true
 }
 
@@ -265,7 +286,7 @@ function bindHotkeys() {
       pin,
       (content) => {
         const activePid = getActivePinId()
-        const activePin = pins.find(p => p.id === activePid)
+        const activePin = pins.find((p) => p.id === activePid)
         if (activePin) {
           activePin.lastUserContent = content
           updatePinStatus(activePin, 'sent')
@@ -279,7 +300,7 @@ function bindHotkeys() {
       () => {
         // Stop generation
         const activePid = getActivePinId()
-        const activePin = pins.find(p => p.id === activePid)
+        const activePin = pins.find((p) => p.id === activePid)
         if (activePin) {
           wsSend({ type: 'session:end', pinId: activePin.id })
           hideGlobalTyping()
@@ -332,7 +353,10 @@ function renderFab(root: ShadowRoot) {
   let fabDragged = false
 
   fab.addEventListener('click', () => {
-    if (fabDragged) { fabDragged = false; return }
+    if (fabDragged) {
+      fabDragged = false
+      return
+    }
     active = !active
     document.body.style.cursor = active ? 'crosshair' : ''
     fab.classList.toggle('active', active)
@@ -347,14 +371,17 @@ function renderFab(root: ShadowRoot) {
     const startX = e.clientX - fab.getBoundingClientRect().left
     const startY = e.clientY - fab.getBoundingClientRect().top
     const onMove = (ev: MouseEvent) => {
-      if (!fabDragged && !isFabDragDistanceExceeded(startPointer, { x: ev.clientX, y: ev.clientY })) {
+      if (
+        !fabDragged &&
+        !isFabDragDistanceExceeded(startPointer, { x: ev.clientX, y: ev.clientY })
+      ) {
         return
       }
       fabDragged = true
       fab.style.right = 'auto'
       fab.style.bottom = 'auto'
-      fab.style.left = (ev.clientX - startX) + 'px'
-      fab.style.top = (ev.clientY - startY) + 'px'
+      fab.style.left = ev.clientX - startX + 'px'
+      fab.style.top = ev.clientY - startY + 'px'
     }
     const onUp = () => {
       document.removeEventListener('mousemove', onMove)
@@ -388,7 +415,7 @@ function repositionPins() {
 }
 
 function removePin(pinId: string) {
-  const idx = pins.findIndex(p => p.id === pinId)
+  const idx = pins.findIndex((p) => p.id === pinId)
   if (idx === -1) return
   const pin = pins[idx]
   wsSend({ type: 'session:end', pinId })

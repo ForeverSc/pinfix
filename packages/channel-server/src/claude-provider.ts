@@ -158,10 +158,18 @@ export function createClaudeSession(contextPrefix: string, cwd?: string): AISess
   return {
     sendMessage,
     kill,
-    onChunk: (cb) => { chunkCb = cb },
-    onTool: (cb) => { toolCb = cb },
-    onDone: (cb) => { doneCb = cb },
-    onError: (cb) => { errorCb = cb },
+    onChunk: (cb) => {
+      chunkCb = cb
+    },
+    onTool: (cb) => {
+      toolCb = cb
+    },
+    onDone: (cb) => {
+      doneCb = cb
+    },
+    onError: (cb) => {
+      errorCb = cb
+    },
   }
 }
 

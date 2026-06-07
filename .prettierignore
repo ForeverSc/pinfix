@@ -1,0 +1,7 @@
+node_modules
+dist
+coverage
+client-dist
+*.tsbuildinfo
+pnpm-lock.yaml
+packages/unplugin/README.md

@@ -36,7 +36,6 @@ interface WsServerOptions {
 }
 
 const HEARTBEAT_INTERVAL = 30_000
-const HEARTBEAT_TIMEOUT = 45_000
 
 async function tryListen(port: number, maxRetries: number): Promise<WebSocketServer> {
   let lastError: Error | null = null

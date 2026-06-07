@@ -11,20 +11,43 @@
   "author": "foreversc",
   "scripts": {
     "build": "pnpm -r run build",
+    "check": "pnpm lint && pnpm format:check && pnpm test && pnpm build",
     "dev": "pnpm -r run dev --parallel",
     "dev:vite-react": "pnpm --filter example-vite-react run dev",
     "dev:vite-vue": "pnpm --filter example-vite-vue run dev",
     "dev:webpack": "pnpm --filter example-webpack-react run dev",
     "dev:rspack": "pnpm --filter example-rspack-react run dev",
+    "format": "prettier \"**/*.{js,mjs,cjs,ts,tsx,vue,json,yml,yaml,css}\" --write",
+    "format:check": "prettier \"**/*.{js,mjs,cjs,ts,tsx,vue,json,yml,yaml,css}\" --check",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "prepare": "husky",
     "release": "pnpm run build && pnpm test && semantic-release",
     "test": "vitest run"
   },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,vue}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml,css,html}": "prettier --write"
+  },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
+    "eslint": "^10.4.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-vue": "^10.9.2",
+    "globals": "^17.6.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.7",
+    "prettier": "^3.8.3",
     "semantic-release": "^25.0.3",
     "tsup": "^8.4.0",
     "typescript": "^5.8.0",
-    "vitest": "^3.2.0"
+    "typescript-eslint": "^8.60.1",
+    "vitest": "^3.2.0",
+    "vue-eslint-parser": "^10.4.1"
   }
 }

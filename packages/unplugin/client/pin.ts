@@ -41,7 +41,7 @@ let pinCounter = 0
 
 // --- Global dialog state ---
 let globalDialog: HTMLElement | null = null
-let globalMessages: ChatMessage[] = []
+const globalMessages: ChatMessage[] = []
 let activePinId: string | null = null
 let globalMessagesEl: HTMLElement | null = null
 let globalInputEl: HTMLTextAreaElement | null = null
@@ -276,7 +276,11 @@ export function createOrShowGlobalDialog(
   function initDrag(e: MouseEvent) {
     if ((e.target as HTMLElement).closest?.('button')) return
     e.preventDefault()
-    const dragStart = getDialogDragStart(dialog, { x: e.clientX, y: e.clientY }, { x: dialogX, y: dialogY })
+    const dragStart = getDialogDragStart(
+      dialog,
+      { x: e.clientX, y: e.clientY },
+      { x: dialogX, y: dialogY },
+    )
     dialogX = dragStart.dialogX
     dialogY = dragStart.dialogY
     dragX = dragStart.dragX

@@ -36,9 +36,7 @@ const renderer = new Renderer()
 
 renderer.code = function ({ text, lang }: { text: string; lang?: string }) {
   const language = lang && hljs.getLanguage(lang) ? lang : ''
-  const highlighted = language
-    ? hljs.highlight(text, { language }).value
-    : escapeHtml(text)
+  const highlighted = language ? hljs.highlight(text, { language }).value : escapeHtml(text)
   const label = language || 'text'
   const escapedCode = escapeHtml(text)
 
