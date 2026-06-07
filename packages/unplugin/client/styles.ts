@@ -53,16 +53,14 @@ export const OVERLAY_STYLES = `
     cursor: grabbing;
   }
   .pinfix-chat-header-icon {
-    width: 24px;
-    height: 24px;
+    width: 18px;
+    height: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 112, 234, 0.2);
     color: #adc7ff;
-    border-radius: 4px;
-    font-size: 14px;
     flex-shrink: 0;
+    opacity: 0.9;
   }
   .pinfix-chat-title {
     font-size: 14px;
