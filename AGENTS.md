@@ -7,21 +7,25 @@ PinFix is a dev-only browser overlay that lets developers annotate UI elements a
 ## Architecture
 
 ```
-Browser Overlay (Shadow DOM) ←→ WebSocket (port 24816) ←→ Channel Server ←→ Claude Agent SDK
+Browser Overlay (Shadow DOM) ←→ WebSocket (plugin-selected dev port) ←→ Channel Server ←→ Claude Agent SDK
 ```
+
+The build plugin owns dev port selection. It starts from `port` (default `24816`), probes up to five retry ports in the plugin process, starts the channel-server child process on the selected port, and injects that exact WebSocket URL into the overlay. The browser client does not scan ports.
+
+Each dev workspace also gets a deterministic `workspaceId` derived from the project root. The overlay sends it as a WebSocket query parameter, and the channel server rejects mismatched clients with close code `1008` to prevent cross-project message leakage when multiple PinFix-enabled projects run at the same time.
 
 ### Packages
 
 | Package | Path | Purpose |
 |---------|------|---------|
-| `pinfix` | `packages/unplugin/` | Build plugin (Vite/Webpack/Rspack) + browser client |
+| `@pinfix/plugin` | `packages/unplugin/` | Publishable build plugin (Vite/Webpack/Rspack) + browser client |
 | `@pinfix/channel-server` | `packages/channel-server/` | WebSocket server + Claude Code integration |
 | `@pinfix/shared` | `packages/shared/` | Shared types & constants |
 
 ### Key Directories
 
 - `packages/unplugin/client/` — Browser overlay UI (plain JS, Shadow DOM, no framework)
-- `packages/unplugin/src/` — Plugin entry points, code transform, HTML injection, server spawn
+- `packages/unplugin/src/` — Plugin entry points, code transform, HTML injection, port selection, server spawn
 - `packages/channel-server/src/` — WS server, Claude provider, session management
 - `examples/` — Demo apps (vite-react, vite-vue, webpack-react, rspack-react)
 
@@ -56,14 +60,20 @@ Browser Overlay (Shadow DOM) ←→ WebSocket (port 24816) ←→ Channel Server
 
 Message types follow the pattern `category:action`:
 - `session:start`, `session:end` — lifecycle
-- `chat:send`, `chat:stream`, `chat:end` — conversation
+- `chat:send` — client request
+- `chat:chunk`, `chat:tool`, `chat:done`, `chat:error` — server responses
 - `workspace:reset` — clear all sessions
 - `ping`, `pong` — heartbeat (30s interval, 45s timeout)
 
+The server keeps one long-lived Claude workspace session per channel-server process. Pins share that workspace session across turns; `workspace:reset` kills and recreates it.
+
 ### Build Plugin
 
+- Selects an available WebSocket port in the plugin process before spawning the channel server
+- Passes `PINFIX_PORT`, `PINFIX_CWD`, `PINFIX_WORKSPACE_ID`, and `PINFIX_MAX_PORT_RETRIES=0` to the child process
 - Spawns channel server as child process on first dev server start
 - Injects client script into HTML via middleware (Vite) or HTML plugin hooks (Webpack/Rspack)
+- Injects `window.__PINFIX_WS_URL__` and `window.__PINFIX_WORKSPACE_ID__` so the client connects to the exact server for the current workspace
 - Channel server auto-terminates when parent process exits
 
 ## Design Tokens (Client UI)
@@ -94,14 +104,15 @@ pnpm dev:vite-react   # Run Vite+React example
 pnpm dev:vite-vue     # Run Vite+Vue example
 pnpm dev:webpack      # Run Webpack+React example
 pnpm dev:rspack       # Run Rspack+React example
-pnpm release          # Build & publish pinfix package
+pnpm --filter @pinfix/plugin pack  # Verify published package contents
+pnpm release          # Build & publish @pinfix/plugin
 ```
 
 ## Configuration
 
 ```ts
 pinfix({
-  port: 24816,                     // WebSocket port
+  port: 24816,                     // Preferred WebSocket port; plugin may choose the next available dev port
   root: process.cwd(),             // Project root
   prompt: '...',                   // System prompt for Claude Code
   hotkey: 'alt+shift+z',             // Activation hotkey

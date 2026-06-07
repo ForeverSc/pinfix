@@ -1,4 +1,5 @@
 import { WebSocketServer, WebSocket } from 'ws'
+import type { IncomingMessage } from 'http'
 import {
   isSessionStartMessage,
   isChatSendMessage,
@@ -31,6 +32,7 @@ interface WsServerOptions {
   port: number
   cwd?: string
   maxPortRetries?: number
+  workspaceId?: string
 }
 
 const HEARTBEAT_INTERVAL = 30_000
@@ -64,7 +66,7 @@ Rules:
 - If the request is ambiguous, ask before modifying`
 
 export async function createWsServer(options: WsServerOptions) {
-  const { port, cwd, maxPortRetries = 5 } = options
+  const { port, cwd, maxPortRetries = 5, workspaceId } = options
   const pinContexts = new Map<string, { source: string }>()
   let workspaceSession: AISession | null = null
   let workspacePrompt: string | undefined
@@ -92,7 +94,16 @@ export async function createWsServer(options: WsServerOptions) {
     }
   }, HEARTBEAT_INTERVAL)
 
-  wss.on('connection', (ws) => {
+  wss.on('connection', (ws, req) => {
+    if (workspaceId && getRequestWorkspaceId(req) !== workspaceId) {
+      logEvent('workspace mismatch', {
+        expected: workspaceId,
+        actual: getRequestWorkspaceId(req) ?? null,
+      })
+      ws.close(1008, 'PinFix workspace mismatch')
+      return
+    }
+
     const client = ws as WebSocket & { isAlive?: boolean }
     client.isAlive = true
 
@@ -260,6 +271,15 @@ export async function createWsServer(options: WsServerOptions) {
   }
 
   return { port: actualPort, close }
+}
+
+function getRequestWorkspaceId(req: IncomingMessage): string | undefined {
+  try {
+    const url = new URL(req.url ?? '/', 'ws://localhost')
+    return url.searchParams.get('workspaceId') ?? undefined
+  } catch {
+    return undefined
+  }
 }
 
 function send(ws: WebSocket, msg: ServerMessage) {

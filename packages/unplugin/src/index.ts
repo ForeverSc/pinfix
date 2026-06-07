@@ -2,6 +2,8 @@ import { createUnplugin } from 'unplugin'
 import { transformCode } from './transform.js'
 import { startChannelServer, stopChannelServer } from './server.js'
 import { getInjectionScript } from './inject.js'
+import { createWorkspaceId } from './workspace.js'
+import { resolveAvailablePort } from './port.js'
 import { WS_PORT_DEFAULT, type PinFixOptions } from '@pinfix/shared'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
@@ -15,31 +17,78 @@ function injectHtml(html: string, script: string): string {
 
 export const unplugin = createUnplugin((rawOptions?: PinFixOptions) => {
   const options = rawOptions ?? {}
-  const port = options.port ?? WS_PORT_DEFAULT
+  const basePort = options.port ?? WS_PORT_DEFAULT
   let root = options.root ?? process.cwd()
-  const wsUrl = `ws://localhost:${port}`
+  let selectedPort: number | null = null
+  let selectedPortPromise: Promise<number> | null = null
+  const ensureSelectedPort = async () => {
+    if (selectedPort !== null) return selectedPort
+    if (!selectedPortPromise) {
+      selectedPortPromise = resolveAvailablePort(basePort)
+        .then((port) => {
+          selectedPort = port
+          return port
+        })
+        .finally(() => {
+          selectedPortPromise = null
+        })
+    }
+    return selectedPortPromise
+  }
+  const getWsUrl = (port: number) => `ws://localhost:${port}`
+  const getWorkspaceId = () => createWorkspaceId(root)
   const debug = options.debug ?? false
   const logError = (msg: string) => console.warn(`[pinfix] ${msg}`)
 
+  let serverStartPromise: Promise<void> | null = null
+
+  const startServer = () => {
+    if (!serverStartPromise) {
+      serverStartPromise = (async () => {
+        const port = await ensureSelectedPort()
+        startChannelServer({
+          port,
+          cwd: root,
+          workspaceId: getWorkspaceId(),
+          maxPortRetries: 0,
+          watch: true,
+          onLog: debug ? (msg) => console.log(`[pinfix] ${msg}`) : undefined,
+          onError: debug ? (msg) => console.warn(`[pinfix] ${msg}`) : undefined,
+        })
+      })()
+    }
+    return serverStartPromise
+  }
+
+  const createInjectionScript = async () => {
+    if (serverStartPromise) {
+      await serverStartPromise
+    }
+    const port = selectedPort ?? basePort
+    return getInjectionScript({
+      wsUrl: getWsUrl(port),
+      workspaceId: getWorkspaceId(),
+      prompt: options.prompt ?? '',
+      hotkey: options.hotkey,
+      fab: options.fab,
+      onError: logError,
+    })
+  }
+
   function setupWebpackLikeCompiler(compiler: any) {
-    let serverStarted = false
-    const startServer = () => {
-      if (serverStarted) return
-      serverStarted = true
-      startChannelServer({
-        port,
-        cwd: root,
-        watch: true,
-        onLog: debug ? (msg) => console.log(`[pinfix] ${msg}`) : undefined,
-        onError: debug ? (msg) => console.warn(`[pinfix] ${msg}`) : undefined,
-      })
+    if (!options.root && compiler.context) {
+      root = compiler.context
     }
 
     if (compiler.watchMode || process.env.WEBPACK_SERVE === 'true' || process.env.RSPACK_SERVE === 'true') {
-      startServer()
+      void startServer()
     }
 
-    compiler.hooks?.watchRun?.tap('pinfix', startServer)
+    if (compiler.hooks?.watchRun?.tapPromise) {
+      compiler.hooks.watchRun.tapPromise('pinfix', startServer)
+    } else {
+      compiler.hooks?.watchRun?.tap('pinfix', () => { void startServer() })
+    }
 
     // Cleanup on shutdown
     if (compiler.hooks?.shutdown) {
@@ -50,8 +99,6 @@ export const unplugin = createUnplugin((rawOptions?: PinFixOptions) => {
 
     // Inject client into HTML assets
     compiler.hooks?.compilation?.tap('pinfix', (compilation: any) => {
-      const script = getInjectionScript({ wsUrl, prompt: options.prompt ?? '', hotkey: options.hotkey, fab: options.fab, onError: logError })
-
       // Prefer HTML plugin hooks because HtmlWebpackPlugin/HtmlRspackPlugin
       // finalize HTML after early processAssets stages.
       const htmlPluginCtors = new Set<any>(
@@ -64,6 +111,7 @@ export const unplugin = createUnplugin((rawOptions?: PinFixOptions) => {
         const hooks = HtmlPlugin.getHooks?.(compilation) ?? HtmlPlugin.getCompilationHooks?.(compilation)
         if (!hooks?.beforeEmit?.tapPromise) continue
         hooks.beforeEmit.tapPromise({ name: 'pinfix' }, async (data: any) => {
+          const script = await createInjectionScript()
           if (typeof data.html === 'string') {
             data.html = injectHtml(data.html, script)
           }
@@ -77,25 +125,29 @@ export const unplugin = createUnplugin((rawOptions?: PinFixOptions) => {
         compilation.hooks.processAssets.tapAsync(
           { name: 'pinfix', stage },
           (assets: Record<string, any>, cb: () => void) => {
-            if (!script) { cb(); return }
+            void (async () => {
+              const script = await createInjectionScript()
+              if (!script) return
 
-            const RawSource = CompilerRuntime?.sources?.RawSource
-            for (const name of Object.keys(assets)) {
-              if (!name.endsWith('.html')) continue
-              const source = assets[name].source()
-              if (typeof source !== 'string') continue
-              const newHtml = injectHtml(source, script)
-              if (newHtml === source) continue
-              if (typeof compilation.updateAsset === 'function' && RawSource) {
-                compilation.updateAsset(name, new RawSource(newHtml))
-              } else {
-                assets[name] = {
-                  source: () => newHtml,
-                  size: () => newHtml.length,
+              const RawSource = CompilerRuntime?.sources?.RawSource
+              for (const name of Object.keys(assets)) {
+                if (!name.endsWith('.html')) continue
+                const source = assets[name].source()
+                if (typeof source !== 'string') continue
+                const newHtml = injectHtml(source, script)
+                if (newHtml === source) continue
+                if (typeof compilation.updateAsset === 'function' && RawSource) {
+                  compilation.updateAsset(name, new RawSource(newHtml))
+                } else {
+                  assets[name] = {
+                    source: () => newHtml,
+                    size: () => newHtml.length,
+                  }
                 }
               }
-            }
-            cb()
+            })()
+              .catch((err) => logError(`failed to inject overlay script (${err.message})`))
+              .finally(cb)
           },
         )
       }
@@ -134,16 +186,15 @@ export const unplugin = createUnplugin((rawOptions?: PinFixOptions) => {
       config() {
         return {
           define: {
-            __PINFIX_WS_URL__: JSON.stringify(wsUrl),
             __PINFIX_PROMPT__: JSON.stringify(options.prompt ?? ''),
             __PINFIX_HOTKEY__: JSON.stringify(options.hotkey ?? 'alt+shift+z'),
             __PINFIX_FAB__: JSON.stringify(options.fab !== false),
           },
         }
       },
-      transformIndexHtml(html: string) {
+      async transformIndexHtml(html: string) {
         // In dev mode, use source import for HMR; getInjectionScript returns '' if no IIFE built yet
-        const injected = getInjectionScript({ wsUrl, prompt: options.prompt ?? '', hotkey: options.hotkey, fab: options.fab, onError: logError })
+        const injected = await createInjectionScript()
         if (injected) {
           return html.replace('<head>', `<head>\n${injected}`)
         }
@@ -151,14 +202,26 @@ export const unplugin = createUnplugin((rawOptions?: PinFixOptions) => {
         const script = `<script type="module" src="/@pinfix/overlay.js"></script>`
         return html.replace('</body>', `${script}\n</body>`)
       },
-      configureServer(server: any) {
-        startChannelServer({
-          port,
-          cwd: root,
-          watch: true,
-          onLog: debug ? (msg) => server.config.logger.info(`[pinfix] ${msg}`) : undefined,
-          onError: debug ? (msg) => server.config.logger.warn(`[pinfix] ${msg}`) : undefined,
-        })
+      async configureServer(server: any) {
+        if (!debug) {
+          await startServer()
+        } else if (!serverStartPromise) {
+          serverStartPromise = (async () => {
+            const port = await ensureSelectedPort()
+            startChannelServer({
+              port,
+              cwd: root,
+              workspaceId: getWorkspaceId(),
+              maxPortRetries: 0,
+              watch: true,
+              onLog: (msg) => server.config.logger.info(`[pinfix] ${msg}`),
+              onError: (msg) => server.config.logger.warn(`[pinfix] ${msg}`),
+            })
+          })()
+          await serverStartPromise
+        } else {
+          await serverStartPromise
+        }
 
         server.httpServer?.on('close', stopChannelServer)
 
@@ -166,8 +229,18 @@ export const unplugin = createUnplugin((rawOptions?: PinFixOptions) => {
         server.middlewares.use((req: any, res: any, next: any) => {
           if (req.url === '/@pinfix/overlay.js') {
             const clientDir = resolve(dirname(fileURLToPath(import.meta.url)), '../client')
-            res.setHeader('Content-Type', 'application/javascript')
-            res.end(`import "${clientDir}/overlay.ts";`)
+            void (async () => {
+              const port = await ensureSelectedPort()
+              res.setHeader('Content-Type', 'application/javascript')
+              res.end([
+                `window.__PINFIX_WS_URL__ = ${JSON.stringify(getWsUrl(port))};`,
+                `window.__PINFIX_WORKSPACE_ID__ = ${JSON.stringify(getWorkspaceId())};`,
+                `window.__PINFIX_PROMPT__ = ${JSON.stringify(options.prompt ?? '')};`,
+                `window.__PINFIX_HOTKEY__ = ${JSON.stringify(options.hotkey ?? 'alt+shift+z')};`,
+                `window.__PINFIX_FAB__ = ${JSON.stringify(options.fab !== false)};`,
+                `import "${clientDir}/overlay.ts";`,
+              ].join('\n'))
+            })().catch(next)
             return
           }
           next()

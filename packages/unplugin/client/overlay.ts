@@ -4,6 +4,7 @@ import { createPinId, renderPin, updatePinStatus, createOrShowGlobalDialog, move
 import { OVERLAY_STYLES } from './styles.js'
 import { isHotkeyPressed, normalizeHotkeyEvent, parseHotkey } from './hotkey.js'
 import { isFabDragDistanceExceeded } from './drag.js'
+import { createWsUrl, getWorkspaceId } from './ws-url.js'
 
 declare const __PINFIX_WS_URL__: string | undefined
 declare const __PINFIX_HOTKEY__: string | undefined
@@ -13,6 +14,8 @@ const WS_URL: string =
   (typeof __PINFIX_WS_URL__ !== 'undefined' && __PINFIX_WS_URL__) ||
   (typeof window !== 'undefined' && (window as any).__PINFIX_WS_URL__) ||
   'ws://localhost:24816'
+const WORKSPACE_ID = getWorkspaceId()
+const WS_URL_WITH_WORKSPACE = createWsUrl(WS_URL, WORKSPACE_ID)
 
 let active = false
 let ws: WebSocket | null = null
@@ -73,7 +76,7 @@ export function init() {
 
 function connectWs() {
   if (disposed) return
-  ws = new WebSocket(WS_URL)
+  ws = new WebSocket(WS_URL_WITH_WORKSPACE)
   ws.onopen = () => {
     reconnectDelay = 1000
     resetHeartbeat()

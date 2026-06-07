@@ -29,6 +29,7 @@ function getClientBundle(onError?: (msg: string) => void): string {
  */
 export function getInjectionScript(options: {
   wsUrl: string
+  workspaceId: string
   prompt: string
   hotkey?: string
   fab?: boolean
@@ -40,6 +41,7 @@ export function getInjectionScript(options: {
   return [
     `<script>`,
     `window.__PINFIX_WS_URL__ = ${JSON.stringify(options.wsUrl)};`,
+    `window.__PINFIX_WORKSPACE_ID__ = ${JSON.stringify(options.workspaceId)};`,
     `window.__PINFIX_PROMPT__ = ${JSON.stringify(options.prompt)};`,
     `window.__PINFIX_HOTKEY__ = ${JSON.stringify(options.hotkey || 'alt+shift+z')};`,
     `window.__PINFIX_FAB__ = ${JSON.stringify(options.fab !== false)};`,

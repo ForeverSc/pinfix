@@ -17,6 +17,8 @@ function getRuntimeDir(): string {
 interface StartChannelServerOptions {
   port: number
   cwd: string
+  workspaceId: string
+  maxPortRetries?: number
   watch?: boolean
   onLog?: (msg: string) => void
   onError?: (msg: string) => void
@@ -58,6 +60,8 @@ function spawnChannelServer(options: StartChannelServerOptions, serverBin: strin
         ...process.env,
         PINFIX_PORT: String(options.port),
         PINFIX_CWD: options.cwd,
+        PINFIX_WORKSPACE_ID: options.workspaceId,
+        PINFIX_MAX_PORT_RETRIES: String(options.maxPortRetries ?? 0),
       },
     })
     proc.stderr?.on('data', (d: Buffer) => {

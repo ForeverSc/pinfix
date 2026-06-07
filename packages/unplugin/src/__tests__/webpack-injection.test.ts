@@ -5,15 +5,22 @@ vi.mock('../server.js', () => ({
   stopChannelServer: vi.fn(),
 }))
 
+vi.mock('../port.js', () => ({
+  resolveAvailablePort: vi.fn(async (port: number) => port),
+}))
+
 vi.mock('../inject.js', () => ({
   getInjectionScript: vi.fn(() => '<script>window.__PINFIX_TEST__ = true;</script>'),
 }))
 
 import { unplugin } from '../index'
+import { resolveAvailablePort } from '../port'
+import { startChannelServer } from '../server'
+import { getInjectionScript } from '../inject'
 
 type BundlerAdapter = 'webpack' | 'rspack'
 
-function createCompiler(adapter: BundlerAdapter = 'webpack') {
+function createCompiler(adapter: BundlerAdapter = 'webpack', options?: { watchMode?: boolean }) {
   let compilationCallback: ((compilation: any) => void) | undefined
   let processAssetsTap: { options: any; callback: (assets: Record<string, any>, cb: () => void) => void } | undefined
   let beforeEmitTap: ((data: { html: string }) => Promise<{ html: string }>) | undefined
@@ -50,6 +57,7 @@ function createCompiler(adapter: BundlerAdapter = 'webpack') {
 
   const compiler = {
     context: '/tmp/pinfix-test',
+    watchMode: options?.watchMode ?? false,
     options: {
       context: '/tmp/pinfix-test',
       module: { rules: [] },
@@ -96,7 +104,7 @@ describe.each<BundlerAdapter>(['webpack', 'rspack'])('%s HTML injection', (adapt
     expect(tap?.options.stage).toBe(5000)
   })
 
-  it('injects overlay script into HTML assets', () => {
+  it('injects overlay script into HTML assets', async () => {
     const plugin = createBundlerPlugin(adapter)
     const { compiler, getProcessAssetsTap } = createCompiler(adapter)
 
@@ -109,7 +117,9 @@ describe.each<BundlerAdapter>(['webpack', 'rspack'])('%s HTML injection', (adapt
       },
     }
 
-    tap?.callback(assets, vi.fn())
+    await new Promise<void>((resolve) => {
+      tap?.callback(assets, resolve)
+    })
 
     expect(assets['index.html'].source()).toContain('window.__PINFIX_TEST__ = true')
   })
@@ -124,5 +134,40 @@ describe.each<BundlerAdapter>(['webpack', 'rspack'])('%s HTML injection', (adapt
     const result = await beforeEmit?.({ html: '<html><head></head><body></body></html>' })
 
     expect(result?.html).toContain('window.__PINFIX_TEST__ = true')
+  })
+
+  it('uses the plugin-selected server port for server startup and HTML injection', async () => {
+    vi.mocked(resolveAvailablePort).mockResolvedValueOnce(24817)
+    const plugin = unplugin[adapter]({ port: 24816 })
+    const { compiler, getBeforeEmitTap } = createCompiler(adapter, { watchMode: true })
+
+    plugin.apply(compiler as any)
+    const beforeEmit = getBeforeEmitTap()
+
+    await beforeEmit?.({ html: '<html><head></head><body></body></html>' })
+
+    expect(startChannelServer).toHaveBeenCalledWith(
+      expect.objectContaining({ port: 24817 }),
+    )
+    expect(getInjectionScript).toHaveBeenCalledWith(
+      expect.objectContaining({ wsUrl: 'ws://localhost:24817' }),
+    )
+  })
+
+  it('does not probe ports for build-only HTML injection', async () => {
+    vi.mocked(resolveAvailablePort).mockClear()
+    vi.mocked(getInjectionScript).mockClear()
+    const plugin = unplugin[adapter]({ port: 24816 })
+    const { compiler, getBeforeEmitTap } = createCompiler(adapter)
+
+    plugin.apply(compiler as any)
+    const beforeEmit = getBeforeEmitTap()
+
+    await beforeEmit?.({ html: '<html><head></head><body></body></html>' })
+
+    expect(resolveAvailablePort).not.toHaveBeenCalled()
+    expect(getInjectionScript).toHaveBeenCalledWith(
+      expect.objectContaining({ wsUrl: 'ws://localhost:24816' }),
+    )
   })
 })
