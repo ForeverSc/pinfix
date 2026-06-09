@@ -6,6 +6,7 @@ import {
   isSessionEndMessage,
   isWorkspaceResetMessage,
   type ServerMessage,
+  type VisualChangeContext,
 } from '@pinfix/shared'
 import type { AISession } from './types.js'
 import { claudeProvider } from './claude-provider.js'
@@ -125,7 +126,7 @@ export async function createWsServer(options: WsServerOptions) {
           })
           handleSessionStart(ws, msg.pinId, msg.source, msg.prompt)
         } else if (isChatSendMessage(msg)) {
-          handleChatSend(ws, msg.pinId, msg.content)
+          handleChatSend(ws, msg.pinId, msg.content, msg.visualChange)
         } else if (isSessionEndMessage(msg)) {
           logEvent('session end', { pinId: msg.pinId })
           handleSessionEnd(msg.pinId)
@@ -204,7 +205,12 @@ export async function createWsServer(options: WsServerOptions) {
     return session
   }
 
-  function handleChatSend(ws: WebSocket, pinId: string, content: string) {
+  function handleChatSend(
+    ws: WebSocket,
+    pinId: string,
+    content: string,
+    visualChange?: VisualChangeContext,
+  ) {
     const pinContext = pinContexts.get(pinId)
     if (!pinContext) {
       send(ws, { type: 'chat:error', pinId, error: 'No active session' })
@@ -218,7 +224,7 @@ export async function createWsServer(options: WsServerOptions) {
 
     const session = ensureWorkspaceSession()
     const turnId = nextTurnId++
-    const message = buildTurnPrompt(pinContext.source, content)
+    const message = buildTurnPrompt(pinContext.source, content, visualChange)
     activeTurn = { pinId, ws, turnId, source: pinContext.source }
     logEvent('turn send', {
       workspace: workspaceSessionId,
@@ -287,6 +293,11 @@ function send(ws: WebSocket, msg: ServerMessage) {
   }
 }
 
-function buildTurnPrompt(source: string, content: string) {
-  return `[source: ${source}]\n\n${content}`
+function buildTurnPrompt(source: string, content: string, visualChange?: VisualChangeContext) {
+  const sections = [`[source: ${source}]`]
+  if (visualChange) {
+    sections.push(`[visual change]\n${JSON.stringify(visualChange, null, 2)}`)
+  }
+  sections.push(content)
+  return sections.join('\n\n')
 }

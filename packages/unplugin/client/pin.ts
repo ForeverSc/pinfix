@@ -1,4 +1,6 @@
 import { renderMarkdown, bindCopyButtons } from './markdown.js'
+import { diffDesignPanelChanges, getColorPickerValue } from './visual-edit.js'
+import type { DesignPanelChanges, VisualChangeContext } from '@pinfix/shared'
 
 // --- SVG Icons (18px, stroke-based) ---
 const ICON_EDIT = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`
@@ -9,6 +11,8 @@ const ICON_CLOSE = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" 
 const ICON_SEND = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`
 const ICON_STOP = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><rect x="9" y="9" width="6" height="6" rx="1" fill="currentColor" stroke="none"/></svg>`
 const ICON_BACK = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`
+const ICON_SLIDERS = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="4" x2="14" y2="4"/><line x1="10" y1="4" x2="3" y2="4"/><line x1="21" y1="12" x2="12" y2="12"/><line x1="8" y1="12" x2="3" y2="12"/><line x1="21" y1="20" x2="16" y2="20"/><line x1="12" y1="20" x2="3" y2="20"/><circle cx="12" cy="4" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="14" cy="20" r="2"/></svg>`
+const ICON_UNDO = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></svg>`
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'tool'
@@ -26,6 +30,7 @@ export interface Pin {
   el?: HTMLElement
   targetEl?: Element
   lastUserContent?: string
+  visualChange?: VisualChangeContext
 }
 
 declare const __PINFIX_PROMPT__: string | undefined
@@ -48,17 +53,28 @@ let globalInputEl: HTMLTextAreaElement | null = null
 let globalSendBtn: HTMLElement | null = null
 let globalStreaming = false
 let globalDragged = false
-let globalCurrentView: 'chat' | 'settings' = 'chat'
+let globalCurrentView: 'chat' | 'settings' | 'design' = 'chat'
 let globalChatViewEl: HTMLElement | null = null
 let globalSettingsViewEl: HTMLElement | null = null
+let globalDesignViewEl: HTMLElement | null = null
 let globalHeaderEl: HTMLElement | null = null
 let globalPathSpan: HTMLElement | null = null
+let globalDesignPathSpan: HTMLElement | null = null
+let globalVisualChange: VisualChangeContext | null = null
+let globalDesignBtn: HTMLButtonElement | null = null
+let globalLoadDesignDefaults: (() => void) | null = null
 
 // Callbacks stored from createOrShowGlobalDialog
-let onSendCallback: ((content: string) => void) | null = null
+let onSendCallback: ((content: string, visualChange?: VisualChangeContext) => void) | null = null
 let onCloseCallback: (() => void) | null = null
 let onStopCallback: (() => void) | null = null
 let onResetCallback: (() => void) | null = null
+let onReadDesignDefaultsCallback: (() => DesignPanelChanges | null) | null = null
+let onPreviewDesignCallback: ((changes: DesignPanelChanges) => VisualChangeContext | null) | null =
+  null
+let onApplyDesignCallback: ((changes: DesignPanelChanges) => VisualChangeContext | null) | null =
+  null
+let onResetVisualCallback: (() => void) | null = null
 
 export function createPinId(): string {
   return `pin_${++pinCounter}_${Date.now()}`
@@ -175,28 +191,51 @@ export function moveDialogToPin(pin: Pin, options?: { force?: boolean }) {
     globalPathSpan.textContent = pin.source
     globalPathSpan.title = pin.source
   }
+  if (globalDesignPathSpan) {
+    globalDesignPathSpan.textContent = pin.source
+    globalDesignPathSpan.title = pin.source
+  }
   // Only reposition if user hasn't manually dragged
   if (!shouldMoveDialogToPin(globalDragged, options)) return
   if (options?.force) globalDragged = false
   positionDialogNearPin(globalDialog, pin)
 }
 
+export function setGlobalVisualAdjusting(adjusting: boolean) {
+  if (globalDesignBtn) {
+    globalDesignBtn.classList.toggle('active', adjusting || globalCurrentView === 'design')
+  }
+}
+
+export function setGlobalVisualChange(change: VisualChangeContext | null) {
+  globalVisualChange = change
+}
+
 export function createOrShowGlobalDialog(
   root: ShadowRoot,
   pin: Pin,
-  onSend: (content: string) => void,
+  onSend: (content: string, visualChange?: VisualChangeContext) => void,
   onClose: () => void,
   onStop: () => void,
   onResetWorkspaceSession: () => void,
+  onReadDesignDefaults: () => DesignPanelChanges | null,
+  onPreviewDesignChange: (changes: DesignPanelChanges) => VisualChangeContext | null,
+  onApplyDesignChange: (changes: DesignPanelChanges) => VisualChangeContext | null,
+  onResetVisualChange: () => void,
 ): HTMLElement {
   activePinId = pin.id
   onSendCallback = onSend
   onCloseCallback = onClose
   onStopCallback = onStop
   onResetCallback = onResetWorkspaceSession
+  onReadDesignDefaultsCallback = onReadDesignDefaults
+  onPreviewDesignCallback = onPreviewDesignChange
+  onApplyDesignCallback = onApplyDesignChange
+  onResetVisualCallback = onResetVisualChange
 
   if (globalDialog) {
     moveDialogToPin(pin, { force: true })
+    if (globalCurrentView === 'design') globalLoadDesignDefaults?.()
     showGlobalDialog()
     return globalDialog
   }
@@ -229,6 +268,18 @@ export function createOrShowGlobalDialog(
   // Header action buttons
   const actionsDiv = document.createElement('div')
   actionsDiv.className = 'pinfix-chat-header-actions'
+
+  const designBtn = document.createElement('button')
+  designBtn.className = 'pinfix-chat-header-btn'
+  designBtn.innerHTML = ICON_SLIDERS
+  designBtn.title = 'Adjust design'
+  designBtn.addEventListener('click', () => {
+    const target = globalCurrentView === 'design' ? 'chat' : 'design'
+    if (target === 'design') globalLoadDesignDefaults?.()
+    switchView(target)
+  })
+  actionsDiv.appendChild(designBtn)
+  globalDesignBtn = designBtn
 
   const settingsBtn = document.createElement('button')
   settingsBtn.className = 'pinfix-chat-header-btn'
@@ -370,6 +421,142 @@ export function createOrShowGlobalDialog(
   chatView.appendChild(inputRow)
   dialog.appendChild(chatView)
 
+  // === Design View (Figma-like inspector replacement) ===
+  const designView = document.createElement('div')
+  designView.className = 'pinfix-design-view'
+  designView.style.display = 'none'
+  globalDesignViewEl = designView
+
+  const designPath = document.createElement('div')
+  designPath.className = 'pinfix-chat-path'
+  designPath.textContent = pin.source
+  designPath.title = pin.source
+  designView.appendChild(designPath)
+  globalDesignPathSpan = designPath
+
+  const designBody = document.createElement('div')
+  designBody.className = 'pinfix-design-body'
+
+  const widthInput = createTextControl('Width', 'auto, 100%, 320px')
+  const heightInput = createTextControl('Height', 'auto, 48px')
+  designBody.appendChild(createDesignSection('Size', [widthInput.row, heightInput.row]))
+
+  const radiusInput = createNumberControl('Radius', 'px')
+  const backgroundInput = createColorControl('Background')
+  const textColorInput = createColorControl('Text')
+  designBody.appendChild(
+    createDesignSection('Style', [radiusInput.row, backgroundInput.row, textColorInput.row]),
+  )
+
+  const fontSizeInput = createNumberControl('Font size', 'px')
+  const fontWeightSelect = createSelectControl('Weight', [
+    ['', 'Keep'],
+    ['400', 'Regular'],
+    ['500', 'Medium'],
+    ['600', 'Semi'],
+    ['700', 'Bold'],
+  ])
+  const textAlignSelect = createSelectControl('Text align', [
+    ['', 'Keep'],
+    ['left', 'Left'],
+    ['center', 'Center'],
+    ['right', 'Right'],
+  ])
+  designBody.appendChild(
+    createDesignSection('Typography', [
+      fontSizeInput.row,
+      fontWeightSelect.row,
+      textAlignSelect.row,
+    ]),
+  )
+
+  const directionSelect = createSelectControl('Direction', [
+    ['', 'Keep'],
+    ['row', 'Row'],
+    ['column', 'Column'],
+  ])
+  const justifySelect = createSelectControl('Justify', [
+    ['', 'Keep'],
+    ['flex-start', 'Start'],
+    ['center', 'Center'],
+    ['flex-end', 'End'],
+    ['space-between', 'Space between'],
+  ])
+  const alignSelect = createSelectControl('Align', [
+    ['', 'Keep'],
+    ['flex-start', 'Start'],
+    ['center', 'Center'],
+    ['flex-end', 'End'],
+    ['stretch', 'Stretch'],
+  ])
+  const gapInput = createNumberControl('Gap', 'px')
+  designBody.appendChild(
+    createDesignSection('Layout', [
+      directionSelect.row,
+      justifySelect.row,
+      alignSelect.row,
+      gapInput.row,
+    ]),
+  )
+
+  const paddingInput = createTextControl('Padding', '8 16, 12px')
+  const marginInput = createTextControl('Margin', '0, 8 12')
+  designBody.appendChild(createDesignSection('Spacing', [paddingInput.row, marginInput.row]))
+  let designBaseline: DesignPanelChanges = {}
+
+  const designFooter = document.createElement('div')
+  designFooter.className = 'pinfix-design-footer'
+
+  const designResetBtn = document.createElement('button')
+  designResetBtn.className = 'pinfix-design-btn'
+  designResetBtn.innerHTML = `${ICON_UNDO}<span>Reset</span>`
+  designResetBtn.addEventListener('click', () => {
+    if (onResetVisualCallback) onResetVisualCallback()
+    setGlobalVisualChange(null)
+    loadDesignDefaults()
+  })
+  designFooter.appendChild(designResetBtn)
+
+  const designApplyBtn = document.createElement('button')
+  designApplyBtn.className = 'pinfix-design-btn pinfix-design-primary'
+  designApplyBtn.innerHTML = `${ICON_SEND}<span>Apply</span>`
+  designApplyBtn.addEventListener('click', () => {
+    const changes = collectDesignChanges()
+    if (!hasDesignChanges(changes)) return
+    const change = onApplyDesignCallback?.(changes) ?? globalVisualChange
+    if (change) {
+      setGlobalVisualChange(change)
+      switchView('chat')
+      send(change)
+    }
+  })
+  designFooter.appendChild(designApplyBtn)
+
+  designView.appendChild(designBody)
+  designView.appendChild(designFooter)
+  dialog.appendChild(designView)
+
+  const designInputs = [
+    directionSelect.input,
+    justifySelect.input,
+    alignSelect.input,
+    gapInput.input,
+    paddingInput.input,
+    marginInput.input,
+    widthInput.input,
+    heightInput.input,
+    radiusInput.input,
+    ...backgroundInput.inputs,
+    ...textColorInput.inputs,
+    fontSizeInput.input,
+    fontWeightSelect.input,
+    textAlignSelect.input,
+  ]
+  for (const control of designInputs) {
+    control.addEventListener('input', previewDesignChange)
+    control.addEventListener('click', previewDesignChange)
+  }
+
   // === Settings View (full-dialog replacement) ===
   const settingsView = document.createElement('div')
   settingsView.className = 'pinfix-settings-view'
@@ -436,18 +623,91 @@ export function createOrShowGlobalDialog(
 
   setTimeout(() => textarea.focus(), 0)
 
-  function send() {
-    const content = textarea.value.trim()
+  function send(visualChange?: VisualChangeContext | null) {
+    const change = visualChange ?? globalVisualChange
+    const content =
+      textarea.value.trim() ||
+      (change ? 'Apply the visual adjustment I made in the browser preview.' : '')
     if (!content) return
     const emptyEl = messagesEl.querySelector('.pinfix-chat-empty')
     if (emptyEl) emptyEl.remove()
     appendGlobalMessage('user', content)
     textarea.value = ''
     growWrap.dataset.value = ''
-    if (onSendCallback) onSendCallback(content)
+    if (onSendCallback) onSendCallback(content, change ?? undefined)
     showGlobalTyping()
     setGlobalStreaming(true)
   }
+
+  function collectDesignChanges(): DesignPanelChanges {
+    return diffDesignPanelChanges(collectCurrentDesignValues(), designBaseline)
+  }
+
+  function collectCurrentDesignValues(): DesignPanelChanges {
+    return compactDesignChanges({
+      layout: {
+        flexDirection: directionSelect.getValue(),
+        justifyContent: justifySelect.getValue(),
+        alignItems: alignSelect.getValue(),
+        gap: asPx(gapInput.getValue()),
+      },
+      spacing: {
+        padding: normalizeCssLengthValue(paddingInput.getValue()),
+        margin: normalizeCssLengthValue(marginInput.getValue()),
+      },
+      size: {
+        width: widthInput.getValue(),
+        height: heightInput.getValue(),
+      },
+      style: {
+        borderRadius: asPx(radiusInput.getValue()),
+        backgroundColor: backgroundInput.getValue(),
+        color: textColorInput.getValue(),
+      },
+      typography: {
+        fontSize: asPx(fontSizeInput.getValue()),
+        fontWeight: fontWeightSelect.getValue(),
+        textAlign: textAlignSelect.getValue(),
+      },
+    })
+  }
+
+  function previewDesignChange() {
+    const changes = collectDesignChanges()
+    if (!hasDesignChanges(changes)) {
+      if (onResetVisualCallback) onResetVisualCallback()
+      setGlobalVisualChange(null)
+      return
+    }
+    const change = onPreviewDesignCallback?.(changes) ?? null
+    setGlobalVisualChange(change)
+  }
+
+  function loadDesignDefaults() {
+    const defaults = onReadDesignDefaultsCallback?.()
+    if (!defaults) return
+    applyDesignDefaults(defaults)
+    designBaseline = collectCurrentDesignValues()
+  }
+
+  function applyDesignDefaults(defaults: DesignPanelChanges) {
+    directionSelect.setValue(defaults.layout?.flexDirection ?? '')
+    justifySelect.setValue(defaults.layout?.justifyContent ?? '')
+    alignSelect.setValue(defaults.layout?.alignItems ?? '')
+    gapInput.setValue(defaults.layout?.gap ?? '')
+    paddingInput.setValue(defaults.spacing?.padding ?? '')
+    marginInput.setValue(defaults.spacing?.margin ?? '')
+    widthInput.setValue(defaults.size?.width ?? '')
+    heightInput.setValue(defaults.size?.height ?? '')
+    radiusInput.setValue(defaults.style?.borderRadius ?? '')
+    backgroundInput.setValue(defaults.style?.backgroundColor ?? '')
+    textColorInput.setValue(defaults.style?.color ?? '')
+    fontSizeInput.setValue(defaults.typography?.fontSize ?? '')
+    fontWeightSelect.setValue(defaults.typography?.fontWeight ?? '')
+    textAlignSelect.setValue(defaults.typography?.textAlign ?? '')
+  }
+
+  globalLoadDesignDefaults = loadDesignDefaults
 
   return dialog
 }
@@ -611,15 +871,208 @@ export function destroyGlobalDialog() {
   globalCurrentView = 'chat'
   globalChatViewEl = null
   globalSettingsViewEl = null
+  globalDesignViewEl = null
   globalHeaderEl = null
   globalPathSpan = null
+  globalDesignPathSpan = null
   onSendCallback = null
   onCloseCallback = null
   onStopCallback = null
   onResetCallback = null
+  onReadDesignDefaultsCallback = null
+  onPreviewDesignCallback = null
+  onApplyDesignCallback = null
+  onResetVisualCallback = null
+  globalVisualChange = null
+  globalDesignBtn = null
+  globalLoadDesignDefaults = null
 }
 
 // --- Private helpers ---
+
+function createDesignSection(title: string, rows: HTMLElement[]): HTMLElement {
+  const section = document.createElement('section')
+  section.className = 'pinfix-design-section'
+  const heading = document.createElement('div')
+  heading.className = 'pinfix-design-section-title'
+  heading.textContent = title
+  section.appendChild(heading)
+  for (const row of rows) section.appendChild(row)
+  return section
+}
+
+function createSelectControl(
+  label: string,
+  options: Array<[string, string]>,
+): {
+  row: HTMLElement
+  input: HTMLSelectElement
+  getValue: () => string
+  setValue: (value: string) => void
+} {
+  const row = createControlRow(label)
+  const input = document.createElement('select')
+  input.className = 'pinfix-design-input'
+  for (const [value, text] of options) {
+    const option = document.createElement('option')
+    option.value = value
+    option.textContent = text
+    input.appendChild(option)
+  }
+  row.appendChild(input)
+  return {
+    row,
+    input,
+    getValue: () => input.value,
+    setValue: (value) => {
+      input.value = value
+    },
+  }
+}
+
+function createNumberControl(
+  label: string,
+  suffix: string,
+): {
+  row: HTMLElement
+  input: HTMLInputElement
+  getValue: () => string
+  setValue: (value: string) => void
+} {
+  const row = createControlRow(label)
+  const wrap = document.createElement('div')
+  wrap.className = 'pinfix-design-number'
+  const input = document.createElement('input')
+  input.className = 'pinfix-design-input'
+  input.type = 'number'
+  input.min = '0'
+  input.step = '1'
+  const suffixEl = document.createElement('span')
+  suffixEl.textContent = suffix
+  wrap.appendChild(input)
+  wrap.appendChild(suffixEl)
+  row.appendChild(wrap)
+  return {
+    row,
+    input,
+    getValue: () => input.value,
+    setValue: (value) => {
+      input.value = value
+    },
+  }
+}
+
+function createTextControl(
+  label: string,
+  placeholder: string,
+): {
+  row: HTMLElement
+  input: HTMLInputElement
+  getValue: () => string
+  setValue: (value: string) => void
+} {
+  const row = createControlRow(label)
+  const input = document.createElement('input')
+  input.className = 'pinfix-design-input'
+  input.type = 'text'
+  input.placeholder = placeholder
+  row.appendChild(input)
+  return {
+    row,
+    input,
+    getValue: () => input.value.trim(),
+    setValue: (value) => {
+      input.value = value
+    },
+  }
+}
+
+function createColorControl(label: string): {
+  row: HTMLElement
+  input: HTMLInputElement
+  picker: HTMLInputElement
+  inputs: HTMLInputElement[]
+  getValue: () => string
+  setValue: (value: string) => void
+} {
+  const row = createControlRow(label)
+  const wrap = document.createElement('div')
+  wrap.className = 'pinfix-design-color'
+
+  const picker = document.createElement('input')
+  picker.className = 'pinfix-design-color-picker'
+  picker.type = 'color'
+  picker.value = '#000000'
+  picker.title = `${label} color`
+
+  const input = document.createElement('input')
+  input.className = 'pinfix-design-input'
+  input.type = 'text'
+  input.placeholder = '#0070ea'
+
+  picker.addEventListener('input', () => {
+    input.value = picker.value
+  })
+  input.addEventListener('input', () => {
+    picker.value = getColorPickerValue(input.value)
+  })
+
+  wrap.appendChild(picker)
+  wrap.appendChild(input)
+  row.appendChild(wrap)
+
+  return {
+    row,
+    input,
+    picker,
+    inputs: [picker, input],
+    getValue: () => input.value.trim(),
+    setValue: (value) => {
+      input.value = value
+      picker.value = getColorPickerValue(value)
+    },
+  }
+}
+
+function createControlRow(label: string): HTMLElement {
+  const row = document.createElement('label')
+  row.className = 'pinfix-design-row'
+  const labelEl = document.createElement('span')
+  labelEl.className = 'pinfix-design-label'
+  labelEl.textContent = label
+  row.appendChild(labelEl)
+  return row
+}
+
+function compactDesignChanges(changes: DesignPanelChanges): DesignPanelChanges {
+  const compact: DesignPanelChanges = {}
+  for (const [group, values] of Object.entries(changes) as Array<
+    [keyof DesignPanelChanges, Record<string, string> | undefined]
+  >) {
+    if (!values) continue
+    const entries = Object.entries(values).filter(([, value]) => value)
+    if (entries.length > 0) compact[group] = Object.fromEntries(entries)
+  }
+  return compact
+}
+
+function hasDesignChanges(changes: DesignPanelChanges): boolean {
+  return Object.values(changes).some((group) => group && Object.keys(group).length > 0)
+}
+
+function asPx(value: string): string {
+  if (!value) return ''
+  return /^-?\d*\.?\d+$/.test(value) ? `${value}px` : value
+}
+
+function normalizeCssLengthValue(value: string): string {
+  const normalized = value.trim()
+  if (!normalized) return ''
+  return normalized
+    .split(/\s+/)
+    .map((part) => (/^-?\d*\.?\d+$/.test(part) ? `${part}px` : part))
+    .join(' ')
+}
 
 function parsePixelValue(value: string): number | null {
   if (!value.endsWith('px')) return null
@@ -652,11 +1105,13 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
 }
 
-function switchView(view: 'chat' | 'settings') {
+function switchView(view: 'chat' | 'settings' | 'design') {
   globalCurrentView = view
-  if (globalHeaderEl) globalHeaderEl.style.display = view === 'chat' ? '' : 'none'
+  if (globalHeaderEl) globalHeaderEl.style.display = view === 'settings' ? 'none' : ''
   if (globalChatViewEl) globalChatViewEl.style.display = view === 'chat' ? '' : 'none'
+  if (globalDesignViewEl) globalDesignViewEl.style.display = view === 'design' ? '' : 'none'
   if (globalSettingsViewEl) globalSettingsViewEl.style.display = view === 'settings' ? '' : 'none'
+  if (globalDesignBtn) globalDesignBtn.classList.toggle('active', view === 'design')
   if (view === 'chat' && globalInputEl) {
     setTimeout(() => globalInputEl!.focus(), 0)
   }

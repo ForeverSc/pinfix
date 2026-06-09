@@ -21,6 +21,56 @@ export interface PinState {
   status: PinStatus
 }
 
+export interface RectSnapshot {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export type VisualChangeOperation = 'move' | 'resize' | 'move-resize' | 'design-panel'
+
+export type VisualChangeTargetScope = 'element' | 'parent' | 'group'
+
+export interface VisualTargetSnapshot {
+  tagName: string
+  id?: string
+  className?: string
+  text?: string
+}
+
+export interface VisualParentLayoutSnapshot {
+  tagName: string
+  display: string
+  gap?: string
+  flexDirection?: string
+  justifyContent?: string
+  alignItems?: string
+  gridTemplateColumns?: string
+}
+
+export interface DesignPanelChanges {
+  layout?: Record<string, string>
+  spacing?: Record<string, string>
+  size?: Record<string, string>
+  style?: Record<string, string>
+  typography?: Record<string, string>
+}
+
+export interface VisualChangeContext {
+  source: string
+  operation: VisualChangeOperation
+  targetScope?: VisualChangeTargetScope
+  intent?: string
+  target: VisualTargetSnapshot
+  beforeRect: RectSnapshot
+  afterRect: RectSnapshot
+  delta: RectSnapshot
+  computedStyle: Record<string, string>
+  parentLayout?: VisualParentLayoutSnapshot
+  changes?: DesignPanelChanges
+}
+
 export function isPinMessage(msg: unknown): msg is PinMessage {
   if (typeof msg !== 'object' || msg === null) return false
   const m = msg as Record<string, unknown>
@@ -48,6 +98,7 @@ export interface ChatSendMessage {
   type: 'chat:send'
   pinId: string
   content: string
+  visualChange?: VisualChangeContext
 }
 
 export interface SessionEndMessage {
@@ -120,7 +171,12 @@ export function isSessionStartMessage(msg: unknown): msg is SessionStartMessage 
 export function isChatSendMessage(msg: unknown): msg is ChatSendMessage {
   if (typeof msg !== 'object' || msg === null) return false
   const m = msg as Record<string, unknown>
-  return m.type === 'chat:send' && typeof m.pinId === 'string' && typeof m.content === 'string'
+  return (
+    m.type === 'chat:send' &&
+    typeof m.pinId === 'string' &&
+    typeof m.content === 'string' &&
+    (m.visualChange === undefined || isVisualChangeContext(m.visualChange))
+  )
 }
 
 export function isSessionEndMessage(msg: unknown): msg is SessionEndMessage {
@@ -145,4 +201,88 @@ export interface PinFixOptions {
   match?: RegExp
   exclude?: RegExp
   debug?: boolean
+}
+
+function isVisualChangeContext(value: unknown): value is VisualChangeContext {
+  if (!isRecord(value)) return false
+  return (
+    typeof value.source === 'string' &&
+    isVisualChangeOperation(value.operation) &&
+    isVisualTargetSnapshot(value.target) &&
+    isRectSnapshot(value.beforeRect) &&
+    isRectSnapshot(value.afterRect) &&
+    isRectSnapshot(value.delta) &&
+    isStringRecord(value.computedStyle) &&
+    (value.parentLayout === undefined || isVisualParentLayoutSnapshot(value.parentLayout)) &&
+    (value.targetScope === undefined || isVisualChangeTargetScope(value.targetScope)) &&
+    isOptionalString(value.intent) &&
+    (value.changes === undefined || isDesignPanelChanges(value.changes))
+  )
+}
+
+function isVisualChangeOperation(value: unknown): value is VisualChangeOperation {
+  return (
+    value === 'move' || value === 'resize' || value === 'move-resize' || value === 'design-panel'
+  )
+}
+
+function isVisualChangeTargetScope(value: unknown): value is VisualChangeTargetScope {
+  return value === 'element' || value === 'parent' || value === 'group'
+}
+
+function isDesignPanelChanges(value: unknown): value is DesignPanelChanges {
+  if (!isRecord(value)) return false
+  return (
+    (value.layout === undefined || isStringRecord(value.layout)) &&
+    (value.spacing === undefined || isStringRecord(value.spacing)) &&
+    (value.size === undefined || isStringRecord(value.size)) &&
+    (value.style === undefined || isStringRecord(value.style)) &&
+    (value.typography === undefined || isStringRecord(value.typography))
+  )
+}
+
+function isRectSnapshot(value: unknown): value is RectSnapshot {
+  if (!isRecord(value)) return false
+  return (
+    typeof value.x === 'number' &&
+    typeof value.y === 'number' &&
+    typeof value.width === 'number' &&
+    typeof value.height === 'number'
+  )
+}
+
+function isVisualTargetSnapshot(value: unknown): value is VisualTargetSnapshot {
+  if (!isRecord(value)) return false
+  return (
+    typeof value.tagName === 'string' &&
+    isOptionalString(value.id) &&
+    isOptionalString(value.className) &&
+    isOptionalString(value.text)
+  )
+}
+
+function isVisualParentLayoutSnapshot(value: unknown): value is VisualParentLayoutSnapshot {
+  if (!isRecord(value)) return false
+  return (
+    typeof value.tagName === 'string' &&
+    typeof value.display === 'string' &&
+    isOptionalString(value.gap) &&
+    isOptionalString(value.flexDirection) &&
+    isOptionalString(value.justifyContent) &&
+    isOptionalString(value.alignItems) &&
+    isOptionalString(value.gridTemplateColumns)
+  )
+}
+
+function isStringRecord(value: unknown): value is Record<string, string> {
+  if (!isRecord(value)) return false
+  return Object.values(value).every((item) => typeof item === 'string')
+}
+
+function isOptionalString(value: unknown): value is string | undefined {
+  return value === undefined || typeof value === 'string'
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
 }

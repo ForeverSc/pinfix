@@ -95,6 +95,10 @@ export const OVERLAY_STYLES = `
     color: #fff;
     background: rgba(255,255,255,0.08);
   }
+  .pinfix-chat-header-btn.active {
+    color: #adc7ff;
+    background: rgba(0, 112, 234, 0.16);
+  }
 
   /* Source file path bar below header */
   .pinfix-chat-path {
@@ -108,6 +112,156 @@ export const OVERLAY_STYLES = `
     text-overflow: ellipsis;
     white-space: nowrap;
     font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+  }
+
+  .pinfix-design-view {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+  }
+  .pinfix-design-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .pinfix-design-section {
+    border: 1px solid rgba(113, 119, 134, 0.22);
+    border-radius: 8px;
+    background: rgba(224, 227, 232, 0.055);
+    padding: 9px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .pinfix-design-section-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(238, 241, 246, 0.9);
+    margin-bottom: 1px;
+  }
+  .pinfix-design-row {
+    display: grid;
+    grid-template-columns: minmax(74px, 0.75fr) minmax(0, 1.2fr);
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+  }
+  .pinfix-design-label {
+    font-size: 11px;
+    color: rgba(193, 198, 215, 0.68);
+    white-space: nowrap;
+  }
+  .pinfix-design-btn {
+    border: 1px solid rgba(113, 119, 134, 0.28);
+    background: rgba(224, 227, 232, 0.08);
+    color: #eef1f6;
+    border-radius: 6px;
+    font: inherit;
+    font-size: 12px;
+    height: 28px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+  }
+  .pinfix-design-btn:hover {
+    background: rgba(224, 227, 232, 0.14);
+    border-color: rgba(173, 199, 255, 0.48);
+  }
+  .pinfix-design-input {
+    min-width: 0;
+    width: 100%;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid rgba(113, 119, 134, 0.28);
+    background: rgba(0,0,0,0.16);
+    color: #eef1f6;
+    padding: 0 8px;
+    font: inherit;
+    font-size: 12px;
+    outline: none;
+    box-sizing: border-box;
+  }
+  .pinfix-design-input:focus {
+    border-color: #adc7ff;
+    box-shadow: 0 0 0 1px rgba(0, 112, 234, 0.35);
+  }
+  .pinfix-design-number {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 5px;
+  }
+  .pinfix-design-number span {
+    font-size: 11px;
+    color: rgba(193, 198, 215, 0.55);
+  }
+  .pinfix-design-color {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    align-items: center;
+    gap: 6px;
+  }
+  .pinfix-design-color-picker {
+    width: 28px;
+    height: 28px;
+    border: 1px solid rgba(113, 119, 134, 0.35);
+    border-radius: 6px;
+    background: rgba(0,0,0,0.16);
+    padding: 2px;
+    cursor: pointer;
+    box-sizing: border-box;
+  }
+  .pinfix-design-color-picker::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+  .pinfix-design-color-picker::-webkit-color-swatch {
+    border: 0;
+    border-radius: 4px;
+  }
+  .pinfix-design-footer {
+    border-top: 1px solid rgba(113, 119, 134, 0.2);
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: 8px;
+  }
+  .pinfix-design-primary {
+    background: #0070ea;
+    border-color: #0070ea;
+    color: #fefcff;
+  }
+  .pinfix-design-primary:hover {
+    background: #0b7df7;
+    border-color: #0b7df7;
+  }
+
+  .pinfix-adjust-box {
+    position: fixed;
+    z-index: 99998;
+    border: 2px solid #0070ea;
+    background: rgba(0, 112, 234, 0.08);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.75), 0 8px 24px rgba(0,0,0,0.18);
+    box-sizing: border-box;
+    cursor: move;
+    pointer-events: auto;
+  }
+  .pinfix-adjust-resize {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    right: -7px;
+    bottom: -7px;
+    border: 2px solid #fff;
+    border-radius: 3px;
+    background: #0070ea;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    cursor: nwse-resize;
   }
 
   /* Messages */

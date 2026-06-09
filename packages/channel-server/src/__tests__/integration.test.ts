@@ -321,6 +321,54 @@ describe('Integration: full chat flow', () => {
     ws.close()
   })
 
+  it('includes visual change context in the Claude turn prompt', async () => {
+    let firstMessageContent = ''
+    mockedQuery.mockImplementation(({ prompt }) => {
+      const iter = (prompt as AsyncIterable<any>)[Symbol.asyncIterator]()
+      return (async function* () {
+        const first = await iter.next()
+        firstMessageContent = first.value.message.content
+        yield { type: 'result' }
+      })() as any
+    })
+
+    const { port, close } = await createWsServer({ port: 0 })
+    cleanup = close
+
+    const ws = new WebSocket(`ws://localhost:${port}`)
+    await new Promise((r) => ws.on('open', r))
+
+    ws.send(
+      JSON.stringify({ type: 'session:start', pinId: 'pin_visual', source: 'src/App.tsx:10:5' }),
+    )
+    await new Promise((r) => setTimeout(r, 50))
+    ws.send(
+      JSON.stringify({
+        type: 'chat:send',
+        pinId: 'pin_visual',
+        content: 'apply this visual adjustment',
+        visualChange: {
+          source: 'src/App.tsx:10:5',
+          operation: 'move-resize',
+          target: { tagName: 'button', id: 'cta', className: 'primary', text: 'Save' },
+          beforeRect: { x: 10, y: 20, width: 100, height: 40 },
+          afterRect: { x: 18, y: 24, width: 120, height: 48 },
+          delta: { x: 8, y: 4, width: 20, height: 8 },
+          computedStyle: { display: 'inline-flex', position: 'static' },
+          parentLayout: { tagName: 'div', display: 'flex', gap: '12px' },
+        },
+      }),
+    )
+    await waitForMessages(ws, 1)
+
+    expect(firstMessageContent).toContain('[visual change]')
+    expect(firstMessageContent).toContain('"operation": "move-resize"')
+    expect(firstMessageContent).toContain('"delta"')
+    expect(firstMessageContent).toContain('apply this visual adjustment')
+
+    ws.close()
+  })
+
   it('creates a new workspace Claude session only after workspace reset', async () => {
     mockedQuery.mockImplementation(({ prompt }) => {
       const iter = (prompt as AsyncIterable<any>)[Symbol.asyncIterator]()
