@@ -53,7 +53,7 @@ let globalInputEl: HTMLTextAreaElement | null = null
 let globalSendBtn: HTMLElement | null = null
 let globalStreaming = false
 let globalDragged = false
-let globalCurrentView: 'chat' | 'settings' | 'design' = 'chat'
+let globalCurrentView: DialogView = 'chat'
 let globalChatViewEl: HTMLElement | null = null
 let globalSettingsViewEl: HTMLElement | null = null
 let globalDesignViewEl: HTMLElement | null = null
@@ -61,7 +61,7 @@ let globalHeaderEl: HTMLElement | null = null
 let globalPathSpan: HTMLElement | null = null
 let globalDesignPathSpan: HTMLElement | null = null
 let globalVisualChange: VisualChangeContext | null = null
-let globalDesignBtn: HTMLButtonElement | null = null
+let globalInputDesignBtn: HTMLButtonElement | null = null
 let globalLoadDesignDefaults: (() => void) | null = null
 
 // Callbacks stored from createOrShowGlobalDialog
@@ -76,8 +76,54 @@ let onApplyDesignCallback: ((changes: DesignPanelChanges) => VisualChangeContext
   null
 let onResetVisualCallback: (() => void) | null = null
 
+type DialogView = 'chat' | 'settings' | 'design'
+type FontFamilyOption = [value: string, label: string]
+
+const FONT_FAMILY_OPTIONS: FontFamilyOption[] = [
+  ['', 'Keep'],
+  ['-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', 'System'],
+  ['Inter, sans-serif', 'Inter'],
+  ['Arial, sans-serif', 'Arial'],
+  ['Helvetica, Arial, sans-serif', 'Helvetica'],
+  ['Georgia, serif', 'Georgia'],
+  ['"Times New Roman", serif', 'Times'],
+  ['"SF Mono", "Fira Code", monospace', 'Mono'],
+]
+
+export const DESIGN_PANEL_FIELD_ORDER = [
+  'Text',
+  'Text color',
+  'Background',
+  'Opacity',
+  'Font family',
+  'Font size',
+  'Weight',
+  'Border radius',
+  'Border color',
+  'Border width',
+  'Width',
+  'Height',
+  'Padding',
+  'Margin',
+  'Layout direction',
+  'Distribution',
+  'Align',
+  'Spacing',
+] as const
+
 export function createPinId(): string {
   return `pin_${++pinCounter}_${Date.now()}`
+}
+
+export function getDesignToggleTarget(currentView: DialogView): 'chat' | 'design' {
+  return currentView === 'design' ? 'chat' : 'design'
+}
+
+export function getFontFamilyOptionLabel(value: string): string {
+  const normalized = value.trim()
+  if (!normalized) return 'Keep'
+  const option = getFontFamilyOption(normalized)
+  return option?.[1] ?? normalized
 }
 
 export function getPrompt(): string {
@@ -202,8 +248,8 @@ export function moveDialogToPin(pin: Pin, options?: { force?: boolean }) {
 }
 
 export function setGlobalVisualAdjusting(adjusting: boolean) {
-  if (globalDesignBtn) {
-    globalDesignBtn.classList.toggle('active', adjusting || globalCurrentView === 'design')
+  if (globalInputDesignBtn) {
+    globalInputDesignBtn.classList.toggle('active', adjusting || globalCurrentView === 'design')
   }
 }
 
@@ -268,18 +314,6 @@ export function createOrShowGlobalDialog(
   // Header action buttons
   const actionsDiv = document.createElement('div')
   actionsDiv.className = 'pinfix-chat-header-actions'
-
-  const designBtn = document.createElement('button')
-  designBtn.className = 'pinfix-chat-header-btn'
-  designBtn.innerHTML = ICON_SLIDERS
-  designBtn.title = 'Adjust design'
-  designBtn.addEventListener('click', () => {
-    const target = globalCurrentView === 'design' ? 'chat' : 'design'
-    if (target === 'design') globalLoadDesignDefaults?.()
-    switchView(target)
-  })
-  actionsDiv.appendChild(designBtn)
-  globalDesignBtn = designBtn
 
   const settingsBtn = document.createElement('button')
   settingsBtn.className = 'pinfix-chat-header-btn'
@@ -401,6 +435,17 @@ export function createOrShowGlobalDialog(
     growWrap.dataset.value = textarea.value
   })
   growWrap.appendChild(textarea)
+
+  const inputDesignBtn = document.createElement('button')
+  inputDesignBtn.className = 'pinfix-chat-input-action'
+  inputDesignBtn.innerHTML = ICON_SLIDERS
+  inputDesignBtn.title = 'Adjust design'
+  inputDesignBtn.addEventListener('click', () => {
+    toggleDesignView()
+  })
+  inputRow.appendChild(inputDesignBtn)
+  globalInputDesignBtn = inputDesignBtn
+
   inputRow.appendChild(growWrap)
   globalInputEl = textarea
 
@@ -427,6 +472,23 @@ export function createOrShowGlobalDialog(
   designView.style.display = 'none'
   globalDesignViewEl = designView
 
+  const designHeader = document.createElement('div')
+  designHeader.className = 'pinfix-design-header'
+
+  const designBackBtn = document.createElement('button')
+  designBackBtn.className = 'pinfix-design-back-btn'
+  designBackBtn.innerHTML = ICON_BACK
+  designBackBtn.title = 'Back'
+  designBackBtn.addEventListener('click', () => switchView('chat'))
+  designHeader.appendChild(designBackBtn)
+
+  const designHeaderTitle = document.createElement('span')
+  designHeaderTitle.className = 'pinfix-design-header-title'
+  designHeaderTitle.textContent = 'Adjust design'
+  designHeader.appendChild(designHeaderTitle)
+  designHeader.addEventListener('mousedown', initDrag)
+  designView.appendChild(designHeader)
+
   const designPath = document.createElement('div')
   designPath.className = 'pinfix-chat-path'
   designPath.textContent = pin.source
@@ -437,17 +499,12 @@ export function createOrShowGlobalDialog(
   const designBody = document.createElement('div')
   designBody.className = 'pinfix-design-body'
 
-  const widthInput = createTextControl('Width', 'auto, 100%, 320px')
-  const heightInput = createTextControl('Height', 'auto, 48px')
-  designBody.appendChild(createDesignSection('Size', [widthInput.row, heightInput.row]))
-
-  const radiusInput = createNumberControl('Radius', 'px')
+  const textInput = createTextControl('Text', 'Selected text')
+  const textColorInput = createColorControl('Text color')
   const backgroundInput = createColorControl('Background')
-  const textColorInput = createColorControl('Text')
-  designBody.appendChild(
-    createDesignSection('Style', [radiusInput.row, backgroundInput.row, textColorInput.row]),
-  )
+  const opacityInput = createNumberControl('Opacity', '', { min: 0, max: 1, step: 0.1 })
 
+  const fontFamilyInput = createFontFamilyControl('Font family')
   const fontSizeInput = createNumberControl('Font size', 'px')
   const fontWeightSelect = createSelectControl('Weight', [
     ['', 'Keep'],
@@ -456,26 +513,21 @@ export function createOrShowGlobalDialog(
     ['600', 'Semi'],
     ['700', 'Bold'],
   ])
-  const textAlignSelect = createSelectControl('Text align', [
-    ['', 'Keep'],
-    ['left', 'Left'],
-    ['center', 'Center'],
-    ['right', 'Right'],
-  ])
-  designBody.appendChild(
-    createDesignSection('Typography', [
-      fontSizeInput.row,
-      fontWeightSelect.row,
-      textAlignSelect.row,
-    ]),
-  )
+  const radiusInput = createNumberControl('Border radius', 'px')
+  const borderColorInput = createColorControl('Border color')
+  const borderWidthInput = createNumberControl('Border width', 'px')
 
-  const directionSelect = createSelectControl('Direction', [
+  const widthInput = createNumberControl('Width', 'px')
+  const heightInput = createNumberControl('Height', 'px')
+
+  const paddingInput = createQuadControl('Padding')
+  const marginInput = createQuadControl('Margin')
+  const directionSelect = createSelectControl('Layout direction', [
     ['', 'Keep'],
-    ['row', 'Row'],
-    ['column', 'Column'],
+    ['row', 'Horizontal'],
+    ['column', 'Vertical'],
   ])
-  const justifySelect = createSelectControl('Justify', [
+  const distributionSelect = createSelectControl('Distribution', [
     ['', 'Keep'],
     ['flex-start', 'Start'],
     ['center', 'Center'],
@@ -489,19 +541,31 @@ export function createOrShowGlobalDialog(
     ['flex-end', 'End'],
     ['stretch', 'Stretch'],
   ])
-  const gapInput = createNumberControl('Gap', 'px')
-  designBody.appendChild(
-    createDesignSection('Layout', [
-      directionSelect.row,
-      justifySelect.row,
-      alignSelect.row,
-      gapInput.row,
-    ]),
-  )
+  const layoutSpacingInput = createPairControl('Spacing')
 
-  const paddingInput = createTextControl('Padding', '8 16, 12px')
-  const marginInput = createTextControl('Margin', '0, 8 12')
-  designBody.appendChild(createDesignSection('Spacing', [paddingInput.row, marginInput.row]))
+  appendDesignRows(designBody, [
+    textInput.row,
+    textColorInput.row,
+    backgroundInput.row,
+    opacityInput.row,
+    createDesignDivider(),
+    fontFamilyInput.row,
+    fontSizeInput.row,
+    fontWeightSelect.row,
+    radiusInput.row,
+    borderColorInput.row,
+    borderWidthInput.row,
+    createDesignDivider(),
+    widthInput.row,
+    heightInput.row,
+    paddingInput.row,
+    marginInput.row,
+    createDesignDivider(),
+    directionSelect.row,
+    distributionSelect.row,
+    alignSelect.row,
+    layoutSpacingInput.row,
+  ])
   let designBaseline: DesignPanelChanges = {}
 
   const designFooter = document.createElement('div')
@@ -537,20 +601,24 @@ export function createOrShowGlobalDialog(
   dialog.appendChild(designView)
 
   const designInputs = [
+    textInput.input,
     directionSelect.input,
-    justifySelect.input,
+    distributionSelect.input,
     alignSelect.input,
-    gapInput.input,
-    paddingInput.input,
-    marginInput.input,
+    ...layoutSpacingInput.inputs,
+    ...paddingInput.inputs,
+    ...marginInput.inputs,
     widthInput.input,
     heightInput.input,
     radiusInput.input,
+    ...borderColorInput.inputs,
+    borderWidthInput.input,
     ...backgroundInput.inputs,
     ...textColorInput.inputs,
+    opacityInput.input,
+    fontFamilyInput.input,
     fontSizeInput.input,
     fontWeightSelect.input,
-    textAlignSelect.input,
   ]
   for (const control of designInputs) {
     control.addEventListener('input', previewDesignChange)
@@ -645,29 +713,35 @@ export function createOrShowGlobalDialog(
 
   function collectCurrentDesignValues(): DesignPanelChanges {
     return compactDesignChanges({
+      content: {
+        text: textInput.getValue(),
+      },
       layout: {
         flexDirection: directionSelect.getValue(),
-        justifyContent: justifySelect.getValue(),
+        justifyContent: distributionSelect.getValue(),
         alignItems: alignSelect.getValue(),
-        gap: asPx(gapInput.getValue()),
+        gap: layoutSpacingInput.getValue(),
       },
       spacing: {
         padding: normalizeCssLengthValue(paddingInput.getValue()),
         margin: normalizeCssLengthValue(marginInput.getValue()),
       },
       size: {
-        width: widthInput.getValue(),
-        height: heightInput.getValue(),
+        width: asPx(widthInput.getValue()),
+        height: asPx(heightInput.getValue()),
       },
       style: {
         borderRadius: asPx(radiusInput.getValue()),
+        borderColor: borderColorInput.getValue(),
+        borderWidth: asPx(borderWidthInput.getValue()),
         backgroundColor: backgroundInput.getValue(),
         color: textColorInput.getValue(),
+        opacity: opacityInput.getValue(),
       },
       typography: {
+        fontFamily: fontFamilyInput.getValue(),
         fontSize: asPx(fontSizeInput.getValue()),
         fontWeight: fontWeightSelect.getValue(),
-        textAlign: textAlignSelect.getValue(),
       },
     })
   }
@@ -691,20 +765,24 @@ export function createOrShowGlobalDialog(
   }
 
   function applyDesignDefaults(defaults: DesignPanelChanges) {
+    textInput.setValue(defaults.content?.text ?? '')
     directionSelect.setValue(defaults.layout?.flexDirection ?? '')
-    justifySelect.setValue(defaults.layout?.justifyContent ?? '')
+    distributionSelect.setValue(defaults.layout?.justifyContent ?? '')
     alignSelect.setValue(defaults.layout?.alignItems ?? '')
-    gapInput.setValue(defaults.layout?.gap ?? '')
+    layoutSpacingInput.setValue(defaults.layout?.gap ?? '')
     paddingInput.setValue(defaults.spacing?.padding ?? '')
     marginInput.setValue(defaults.spacing?.margin ?? '')
     widthInput.setValue(defaults.size?.width ?? '')
     heightInput.setValue(defaults.size?.height ?? '')
     radiusInput.setValue(defaults.style?.borderRadius ?? '')
+    borderColorInput.setValue(defaults.style?.borderColor ?? '')
+    borderWidthInput.setValue(defaults.style?.borderWidth ?? '')
     backgroundInput.setValue(defaults.style?.backgroundColor ?? '')
     textColorInput.setValue(defaults.style?.color ?? '')
+    opacityInput.setValue(defaults.style?.opacity ?? '')
+    fontFamilyInput.setValue(defaults.typography?.fontFamily ?? '')
     fontSizeInput.setValue(defaults.typography?.fontSize ?? '')
     fontWeightSelect.setValue(defaults.typography?.fontWeight ?? '')
-    textAlignSelect.setValue(defaults.typography?.textAlign ?? '')
   }
 
   globalLoadDesignDefaults = loadDesignDefaults
@@ -884,21 +962,20 @@ export function destroyGlobalDialog() {
   onApplyDesignCallback = null
   onResetVisualCallback = null
   globalVisualChange = null
-  globalDesignBtn = null
+  globalInputDesignBtn = null
   globalLoadDesignDefaults = null
 }
 
 // --- Private helpers ---
 
-function createDesignSection(title: string, rows: HTMLElement[]): HTMLElement {
-  const section = document.createElement('section')
-  section.className = 'pinfix-design-section'
-  const heading = document.createElement('div')
-  heading.className = 'pinfix-design-section-title'
-  heading.textContent = title
-  section.appendChild(heading)
-  for (const row of rows) section.appendChild(row)
-  return section
+function appendDesignRows(body: HTMLElement, rows: HTMLElement[]) {
+  for (const row of rows) body.appendChild(row)
+}
+
+function createDesignDivider(): HTMLElement {
+  const divider = document.createElement('div')
+  divider.className = 'pinfix-design-divider'
+  return divider
 }
 
 function createSelectControl(
@@ -930,9 +1007,63 @@ function createSelectControl(
   }
 }
 
+function createFontFamilyControl(label: string): {
+  row: HTMLElement
+  input: HTMLSelectElement
+  getValue: () => string
+  setValue: (value: string) => void
+} {
+  const control = createSelectControl(label, FONT_FAMILY_OPTIONS)
+
+  return {
+    ...control,
+    setValue: (value) => {
+      const normalized = value.trim()
+      if (!normalized) {
+        control.input.value = ''
+        return
+      }
+      const knownOption = getFontFamilyOption(normalized)
+      const optionValue = knownOption?.[0] ?? normalized
+      const optionLabel = knownOption?.[1] ?? normalized
+      const hasOption = Array.from(control.input.options).some(
+        (option) => option.value === optionValue,
+      )
+      if (!hasOption) {
+        const option = document.createElement('option')
+        option.value = optionValue
+        option.textContent = optionLabel
+        control.input.appendChild(option)
+      }
+      control.input.value = optionValue
+    },
+  }
+}
+
+function getFontFamilyOption(value: string): FontFamilyOption | undefined {
+  const normalizedValue = normalizeFontFamilyName(value)
+  if (!normalizedValue) return FONT_FAMILY_OPTIONS[0]
+  return FONT_FAMILY_OPTIONS.find(([optionValue, optionLabel]) => {
+    if (!optionValue) return false
+    return (
+      normalizeFontFamilyName(optionValue) === normalizedValue ||
+      normalizeFontFamilyName(optionLabel) === normalizedValue
+    )
+  })
+}
+
+function normalizeFontFamilyName(value: string): string {
+  return value
+    .split(',')[0]
+    .trim()
+    .replace(/^["']|["']$/g, '')
+    .toLowerCase()
+}
+
 function createNumberControl(
   label: string,
   suffix: string,
+  options: { min?: number; max?: number; step?: number } = {},
 ): {
   row: HTMLElement
   input: HTMLInputElement
@@ -945,12 +1076,15 @@ function createNumberControl(
   const input = document.createElement('input')
   input.className = 'pinfix-design-input'
   input.type = 'number'
-  input.min = '0'
-  input.step = '1'
-  const suffixEl = document.createElement('span')
-  suffixEl.textContent = suffix
+  input.min = String(options.min ?? 0)
+  if (options.max !== undefined) input.max = String(options.max)
+  input.step = String(options.step ?? 1)
   wrap.appendChild(input)
-  wrap.appendChild(suffixEl)
+  if (suffix) {
+    const suffixEl = document.createElement('span')
+    suffixEl.textContent = suffix
+    wrap.appendChild(suffixEl)
+  }
   row.appendChild(wrap)
   return {
     row,
@@ -958,6 +1092,73 @@ function createNumberControl(
     getValue: () => input.value,
     setValue: (value) => {
       input.value = value
+    },
+  }
+}
+
+function createQuadControl(label: string): {
+  row: HTMLElement
+  inputs: HTMLInputElement[]
+  getValue: () => string
+  setValue: (value: string) => void
+} {
+  const row = createControlRow(label)
+  const wrap = document.createElement('div')
+  wrap.className = 'pinfix-design-quad'
+  const inputs = Array.from({ length: 4 }, (_, index) => {
+    const input = document.createElement('input')
+    input.className = 'pinfix-design-input pinfix-design-quad-input'
+    input.type = 'number'
+    input.min = '0'
+    input.step = '1'
+    input.placeholder = ['T', 'R', 'B', 'L'][index]
+    wrap.appendChild(input)
+    return input
+  })
+  row.appendChild(wrap)
+
+  return {
+    row,
+    inputs,
+    getValue: () => normalizeCssLengthValue(inputs.map((input) => input.value).join(' ')),
+    setValue: (value) => {
+      const parts = expandCssBoxValue(value)
+      inputs.forEach((input, index) => {
+        input.value = parts[index] ?? ''
+      })
+    },
+  }
+}
+
+function createPairControl(label: string): {
+  row: HTMLElement
+  inputs: HTMLInputElement[]
+  getValue: () => string
+  setValue: (value: string) => void
+} {
+  const row = createControlRow(label)
+  const wrap = document.createElement('div')
+  wrap.className = 'pinfix-design-pair'
+  const inputs = Array.from({ length: 2 }, (_, index) => {
+    const input = document.createElement('input')
+    input.className = 'pinfix-design-input pinfix-design-pair-input'
+    input.type = 'number'
+    input.min = '0'
+    input.step = '1'
+    input.placeholder = ['Row', 'Col'][index]
+    wrap.appendChild(input)
+    return input
+  })
+  row.appendChild(wrap)
+
+  return {
+    row,
+    inputs,
+    getValue: () => normalizeCssLengthValue(inputs.map((input) => input.value).join(' ')),
+    setValue: (value) => {
+      const parts = expandCssBoxValue(value)
+      inputs[0].value = parts[0] ?? ''
+      inputs[1].value = parts[1] ?? parts[0] ?? ''
     },
   }
 }
@@ -1050,10 +1251,21 @@ function compactDesignChanges(changes: DesignPanelChanges): DesignPanelChanges {
     [keyof DesignPanelChanges, Record<string, string> | undefined]
   >) {
     if (!values) continue
-    const entries = Object.entries(values).filter(([, value]) => value)
+    const entries = Object.entries(values).filter(([key, value]) =>
+      shouldKeepDesignValue(group, key, value),
+    )
     if (entries.length > 0) compact[group] = Object.fromEntries(entries)
   }
   return compact
+}
+
+function shouldKeepDesignValue(
+  group: keyof DesignPanelChanges,
+  key: string,
+  value: string,
+): boolean {
+  if (group === 'content' && key === 'text') return true
+  return Boolean(value)
 }
 
 function hasDesignChanges(changes: DesignPanelChanges): boolean {
@@ -1072,6 +1284,19 @@ function normalizeCssLengthValue(value: string): string {
     .split(/\s+/)
     .map((part) => (/^-?\d*\.?\d+$/.test(part) ? `${part}px` : part))
     .join(' ')
+}
+
+function expandCssBoxValue(value: string): string[] {
+  const parts = value.trim().split(/\s+/).filter(Boolean).map(stripPxSuffix).slice(0, 4)
+  if (parts.length === 0) return ['', '', '', '']
+  if (parts.length === 1) return [parts[0], parts[0], parts[0], parts[0]]
+  if (parts.length === 2) return [parts[0], parts[1], parts[0], parts[1]]
+  if (parts.length === 3) return [parts[0], parts[1], parts[2], parts[1]]
+  return parts
+}
+
+function stripPxSuffix(value: string): string {
+  return value.endsWith('px') ? value.slice(0, -2) : value
 }
 
 function parsePixelValue(value: string): number | null {
@@ -1105,13 +1330,19 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
 }
 
-function switchView(view: 'chat' | 'settings' | 'design') {
+function toggleDesignView() {
+  const target = getDesignToggleTarget(globalCurrentView)
+  if (target === 'design') globalLoadDesignDefaults?.()
+  switchView(target)
+}
+
+function switchView(view: DialogView) {
   globalCurrentView = view
-  if (globalHeaderEl) globalHeaderEl.style.display = view === 'settings' ? 'none' : ''
+  if (globalHeaderEl) globalHeaderEl.style.display = view === 'chat' ? '' : 'none'
   if (globalChatViewEl) globalChatViewEl.style.display = view === 'chat' ? '' : 'none'
   if (globalDesignViewEl) globalDesignViewEl.style.display = view === 'design' ? '' : 'none'
   if (globalSettingsViewEl) globalSettingsViewEl.style.display = view === 'settings' ? '' : 'none'
-  if (globalDesignBtn) globalDesignBtn.classList.toggle('active', view === 'design')
+  if (globalInputDesignBtn) globalInputDesignBtn.classList.toggle('active', view === 'design')
   if (view === 'chat' && globalInputEl) {
     setTimeout(() => globalInputEl!.focus(), 0)
   }

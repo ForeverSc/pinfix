@@ -50,6 +50,7 @@ export interface VisualParentLayoutSnapshot {
 }
 
 export interface DesignPanelChanges {
+  content?: Record<string, string>
   layout?: Record<string, string>
   spacing?: Record<string, string>
   size?: Record<string, string>
@@ -233,6 +234,7 @@ function isVisualChangeTargetScope(value: unknown): value is VisualChangeTargetS
 function isDesignPanelChanges(value: unknown): value is DesignPanelChanges {
   if (!isRecord(value)) return false
   return (
+    (value.content === undefined || isStringRecord(value.content)) &&
     (value.layout === undefined || isStringRecord(value.layout)) &&
     (value.spacing === undefined || isStringRecord(value.spacing)) &&
     (value.size === undefined || isStringRecord(value.size)) &&

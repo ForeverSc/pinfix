@@ -23,6 +23,7 @@ interface DesignPanelChangeInput extends VisualChangeInput {
 }
 
 interface DesignPanelStyleInput {
+  textContent: string
   flexDirection: string
   justifyContent: string
   alignItems: string
@@ -32,11 +33,14 @@ interface DesignPanelStyleInput {
   width: string
   height: string
   borderRadius: string
+  borderColor: string
+  borderWidth: string
   backgroundColor: string
   color: string
+  opacity: string
+  fontFamily: string
   fontSize: string
   fontWeight: string
-  textAlign: string
 }
 
 interface StartVisualAdjustmentOptions {
@@ -133,6 +137,9 @@ export function getKeyboardAdjustment(input: KeyboardAdjustmentInput): KeyboardA
 
 export function getDesignPanelDefaults(input: DesignPanelStyleInput): DesignPanelChanges {
   return {
+    content: {
+      text: input.textContent,
+    },
     layout: {
       flexDirection: input.flexDirection,
       justifyContent: input.justifyContent,
@@ -144,18 +151,21 @@ export function getDesignPanelDefaults(input: DesignPanelStyleInput): DesignPane
       margin: stripPx(input.margin),
     },
     size: {
-      width: input.width,
-      height: input.height,
+      width: stripPx(input.width),
+      height: stripPx(input.height),
     },
     style: {
       borderRadius: stripPx(input.borderRadius),
+      borderColor: input.borderColor,
+      borderWidth: stripPx(input.borderWidth),
       backgroundColor: input.backgroundColor,
       color: input.color,
+      opacity: input.opacity,
     },
     typography: {
+      fontFamily: input.fontFamily,
       fontSize: stripPx(input.fontSize),
       fontWeight: input.fontWeight,
-      textAlign: input.textAlign,
     },
   }
 }
@@ -171,11 +181,20 @@ export function diffDesignPanelChanges(
     if (!values) continue
     const baselineValues = (baseline[group] ?? {}) as Record<string, string>
     const changedEntries = Object.entries(values).filter(
-      ([key, value]) => value && value !== baselineValues[key],
+      ([key, value]) => shouldKeepDesignValue(group, key, value) && value !== baselineValues[key],
     )
     if (changedEntries.length > 0) diff[group] = Object.fromEntries(changedEntries)
   }
   return diff
+}
+
+function shouldKeepDesignValue(
+  group: keyof DesignPanelChanges,
+  key: string,
+  value: string,
+): boolean {
+  if (group === 'content' && key === 'text') return true
+  return Boolean(value)
 }
 
 export function getColorPickerValue(value: string): string {

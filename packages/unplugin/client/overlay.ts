@@ -54,6 +54,7 @@ let designPreview: {
   target: HTMLElement
   beforeRect: { x: number; y: number; width: number; height: number }
   inlineStyle: Record<string, string>
+  textContent: string
 } | null = null
 
 const HEARTBEAT_TIMEOUT = 45_000
@@ -483,6 +484,7 @@ function readDesignDefaults(): DesignPanelChanges | null {
 
   const style = window.getComputedStyle(activePin.targetEl)
   return getDesignPanelDefaults({
+    textContent: activePin.targetEl.textContent?.trim().replace(/\s+/g, ' ') ?? '',
     flexDirection: style.flexDirection,
     justifyContent: style.justifyContent,
     alignItems: style.alignItems,
@@ -492,11 +494,14 @@ function readDesignDefaults(): DesignPanelChanges | null {
     width: style.width,
     height: style.height,
     borderRadius: style.borderRadius,
+    borderColor: style.borderColor,
+    borderWidth: style.borderWidth,
     backgroundColor: style.backgroundColor,
     color: style.color,
+    opacity: style.opacity,
+    fontFamily: style.fontFamily,
     fontSize: style.fontSize,
     fontWeight: style.fontWeight,
-    textAlign: style.textAlign,
   })
 }
 
@@ -519,10 +524,12 @@ function previewDesignChange(
       target,
       beforeRect: snapshotRect(target.getBoundingClientRect()),
       inlineStyle: snapshotInlineStyle(target),
+      textContent: target.textContent ?? '',
     }
   }
 
   restoreInlineStyle(target, designPreview.inlineStyle)
+  target.textContent = designPreview.textContent
   applyDesignStyles(target, changes)
 
   const change = createDesignPanelChangeContext({
@@ -545,6 +552,7 @@ function resetDesignPreview(options?: { restore?: boolean }) {
   if (!designPreview) return
   if (options?.restore) {
     restoreInlineStyle(designPreview.target, designPreview.inlineStyle)
+    designPreview.target.textContent = designPreview.textContent
   }
   designPreview = null
 }
@@ -560,11 +568,14 @@ const DESIGN_STYLE_KEYS = [
   'width',
   'height',
   'borderRadius',
+  'borderColor',
+  'borderWidth',
   'backgroundColor',
   'color',
+  'opacity',
+  'fontFamily',
   'fontSize',
   'fontWeight',
-  'textAlign',
 ] as const
 
 function snapshotInlineStyle(target: HTMLElement): Record<string, string> {
@@ -582,6 +593,9 @@ function restoreInlineStyle(target: HTMLElement, snapshot: Record<string, string
 }
 
 function applyDesignStyles(target: HTMLElement, changes: DesignPanelChanges) {
+  const content = changes.content ?? {}
+  if (content.text !== undefined) target.textContent = content.text
+
   const layout = changes.layout ?? {}
   if (layout.flexDirection || layout.justifyContent || layout.alignItems || layout.gap) {
     target.style.display = 'flex'
@@ -601,13 +615,16 @@ function applyDesignStyles(target: HTMLElement, changes: DesignPanelChanges) {
 
   const style = changes.style ?? {}
   if (style.borderRadius) target.style.borderRadius = style.borderRadius
+  if (style.borderColor) target.style.borderColor = style.borderColor
+  if (style.borderWidth) target.style.borderWidth = style.borderWidth
   if (style.backgroundColor) target.style.backgroundColor = style.backgroundColor
   if (style.color) target.style.color = style.color
+  if (style.opacity) target.style.opacity = style.opacity
 
   const typography = changes.typography ?? {}
+  if (typography.fontFamily) target.style.fontFamily = typography.fontFamily
   if (typography.fontSize) target.style.fontSize = typography.fontSize
   if (typography.fontWeight) target.style.fontWeight = typography.fontWeight
-  if (typography.textAlign) target.style.textAlign = typography.textAlign
 }
 
 function snapshotRect(rect: DOMRect): { x: number; y: number; width: number; height: number } {
@@ -643,9 +660,12 @@ function snapshotComputedStyle(style: CSSStyleDeclaration): Record<string, strin
     color: style.color,
     backgroundColor: style.backgroundColor,
     borderRadius: style.borderRadius,
+    borderColor: style.borderColor,
+    borderWidth: style.borderWidth,
+    opacity: style.opacity,
+    fontFamily: style.fontFamily,
     fontSize: style.fontSize,
     fontWeight: style.fontWeight,
-    textAlign: style.textAlign,
   }
 }
 

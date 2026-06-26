@@ -63,30 +63,41 @@ describe('visual edit helpers', () => {
 
   it('maps computed styles into design panel defaults', () => {
     const defaults = getDesignPanelDefaults({
+      textContent: 'Save',
       flexDirection: 'row',
-      justifyContent: 'center',
+      justifyContent: 'space-between',
       alignItems: 'center',
-      gap: '12px',
+      gap: '12px 16px',
       padding: '8px 16px',
       margin: '0px',
       width: '120px',
       height: '40px',
       borderRadius: '10px',
+      borderColor: 'rgb(229, 231, 235)',
+      borderWidth: '2px',
       backgroundColor: 'rgb(0, 112, 234)',
       color: 'rgb(255, 255, 255)',
+      opacity: '0.75',
+      fontFamily: '-apple-system, BlinkMacSystemFont',
       fontSize: '14px',
       fontWeight: '600',
-      textAlign: 'center',
     })
 
+    expect(defaults.content.text).toBe('Save')
     expect(defaults.layout).toEqual({
       flexDirection: 'row',
-      justifyContent: 'center',
+      justifyContent: 'space-between',
       alignItems: 'center',
-      gap: '12',
+      gap: '12 16',
     })
     expect(defaults.spacing.padding).toBe('8 16')
+    expect(defaults.size.width).toBe('120')
+    expect(defaults.size.height).toBe('40')
     expect(defaults.style.borderRadius).toBe('10')
+    expect(defaults.style.borderColor).toBe('rgb(229, 231, 235)')
+    expect(defaults.style.borderWidth).toBe('2')
+    expect(defaults.style.opacity).toBe('0.75')
+    expect(defaults.typography.fontFamily).toBe('-apple-system, BlinkMacSystemFont')
     expect(defaults.typography.fontSize).toBe('14')
   })
 
@@ -104,6 +115,21 @@ describe('visual edit helpers', () => {
 
     expect(diff).toEqual({
       spacing: { padding: '8px 20px' },
+    })
+  })
+
+  it('keeps cleared text content in design panel changes', () => {
+    const diff = diffDesignPanelChanges(
+      {
+        content: { text: '' },
+      },
+      {
+        content: { text: 'Save' },
+      },
+    )
+
+    expect(diff).toEqual({
+      content: { text: '' },
     })
   })
 

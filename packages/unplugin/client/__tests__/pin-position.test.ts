@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { getDialogDragStart, getDialogPositionNearPin, shouldMoveDialogToPin } from '../pin'
+import {
+  DESIGN_PANEL_FIELD_ORDER,
+  getFontFamilyOptionLabel,
+  getDesignToggleTarget,
+  getDialogDragStart,
+  getDialogPositionNearPin,
+  shouldMoveDialogToPin,
+} from '../pin'
 
 describe('dialog positioning', () => {
   it('allows explicit pin selection to move the dialog after manual drag', () => {
@@ -44,5 +51,41 @@ describe('dialog positioning', () => {
 
     expect(position.x).toBe(116)
     expect(position.y).toBe(76)
+  })
+
+  it('toggles the design panel from chat or design controls', () => {
+    expect(getDesignToggleTarget('chat')).toBe('design')
+    expect(getDesignToggleTarget('design')).toBe('chat')
+    expect(getDesignToggleTarget('settings')).toBe('design')
+  })
+
+  it('orders design panel fields like the Codex annotation inspector', () => {
+    expect(DESIGN_PANEL_FIELD_ORDER).toEqual([
+      'Text',
+      'Text color',
+      'Background',
+      'Opacity',
+      'Font family',
+      'Font size',
+      'Weight',
+      'Border radius',
+      'Border color',
+      'Border width',
+      'Width',
+      'Height',
+      'Padding',
+      'Margin',
+      'Layout direction',
+      'Distribution',
+      'Align',
+      'Spacing',
+    ])
+  })
+
+  it('labels computed font families with concrete names', () => {
+    expect(getFontFamilyOptionLabel('Arial')).toBe('Arial')
+    expect(getFontFamilyOptionLabel('Arial, sans-serif')).toBe('Arial')
+    expect(getFontFamilyOptionLabel('-apple-system, BlinkMacSystemFont')).toBe('System')
+    expect(getFontFamilyOptionLabel('"Custom Sans", sans-serif')).toBe('"Custom Sans", sans-serif')
   })
 })
