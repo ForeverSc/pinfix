@@ -15,9 +15,11 @@
 </p>
 
 ## 预览
+
 https://github.com/user-attachments/assets/e155481b-5582-476a-a108-4ba637cdb9d4
+
 > 点击任意 UI，描述你想改什么，PinFix 会让 Claude Code 精准找到源代码并实时完成修改。<br>
-无需切换窗口，无需复制文件路径，指哪改哪，HMR 即刻生效。
+> 无需切换窗口，无需复制文件路径，指哪改哪，HMR 即刻生效。
 
 ## 为什么选择 PinFix？
 
@@ -26,6 +28,7 @@ https://github.com/user-attachments/assets/e155481b-5582-476a-a108-4ba637cdb9d4
 - **页面即上下文** — 直接在 UI 上标注需求，无需切换窗口、复制路径或解释组件位置
 - **实时编辑** — Claude Code 直接修改源文件，HMR 即时应用变更
 - **可视化选择** — Alt+Shift+Z 激活十字准星模式，悬停高亮，点击固定
+- **设计调整面板** — 当纯文字描述太慢时，可用检查器式控件调整文本、布局、间距、尺寸、颜色、边框和字体
 - **框架无关** — 支持 React、Vue、Svelte 或任何 JSX/TSX 框架
 - **零配置** — 构建配置中加一行插件即可，服务自动启停
 
@@ -38,34 +41,37 @@ npm install -D @pinfix/plugin
 在构建配置中添加插件：
 
 **Vite**
+
 ```ts
 // vite.config.ts
 import pinfix from '@pinfix/plugin/vite'
 
 export default defineConfig({
-  plugins: [pinfix()]
+  plugins: [pinfix()],
 })
 ```
 
 **Webpack**
+
 ```ts
 // webpack.config.js
 import pinfix from '@pinfix/plugin/webpack'
 
 export default {
-  plugins: [pinfix()]
+  plugins: [pinfix()],
 }
 ```
 
 **Rspack / Rsbuild**
+
 ```ts
 // rsbuild.config.ts
 import pinfix from '@pinfix/plugin/rspack'
 
 export default {
   tools: {
-    rspack: { plugins: [pinfix()] }
-  }
+    rspack: { plugins: [pinfix()] },
+  },
 }
 ```
 
@@ -77,10 +83,11 @@ export default {
 2. 按下 **Alt + Shift + Z**（Mac 上为 Option + Shift + Z）进入标注模式
 3. 鼠标悬停任意组件 —— 蓝色边框高亮显示
 4. 点击放置 pin 标注点
-5. 在弹出的对话框中输入修改需求
-6. Claude Code 流式响应并编辑源代码
-7. HMR 热更新即刻生效 —— 立即看到结果
-8. 继续对话进行迭代调整
+5. 在弹出的对话框中输入修改需求，或打开 **Adjust design** 调整布局、间距、尺寸、颜色、边框和文本控件
+6. Claude Code 会收到选中源码位置和结构化视觉变更
+7. Claude Code 流式响应并编辑源代码
+8. HMR 热更新即刻生效 —— 立即看到结果
+9. 继续对话进行迭代调整
 
 ## 工作原理
 
@@ -92,31 +99,31 @@ export default {
 ```
 
 1. **构建插件**转换 JSX/TSX/Vue 文件，注入 `data-pinfix-source` 属性，包含文件路径、行号和列号元数据
-2. **客户端覆盖层**在 Shadow DOM 内渲染 —— 与应用样式完全隔离。负责 pin 放置、聊天 UI 和 WebSocket 通信
+2. **客户端覆盖层**在 Shadow DOM 内渲染 —— 与应用样式完全隔离。负责 pin 放置、聊天 UI、设计调整控件和 WebSocket 通信
 3. **Channel 服务**随开发服务器自动启动。所有 pin 共享工作区级别的 Claude Code 会话，拥有完整项目上下文
 
 ## 配置选项
 
 ```ts
 pinfix({
-  port: 24816,                        // WebSocket 端口（默认 24816）
-  hotkey: 'alt+shift+z',               // 激活快捷键
-  fab: true,                         // 显示浮动操作按钮
-  prompt: '自定义系统提示词...',       // 为 Claude Code 提供额外上下文
+  port: 24816, // WebSocket 端口（默认 24816）
+  hotkey: 'alt+shift+z', // 激活快捷键
+  fab: true, // 显示浮动操作按钮
+  prompt: '自定义系统提示词...', // 为 Claude Code 提供额外上下文
   escapeTags: ['Layout', 'Provider'], // 跳过这些包装组件
-  match: /\.(tsx|jsx|vue)$/,          // 仅转换匹配的文件
-  exclude: /node_modules/,            // 排除的文件
-  debug: false,                       // 启用调试日志
+  match: /\.(tsx|jsx|vue)$/, // 仅转换匹配的文件
+  exclude: /node_modules/, // 排除的文件
+  debug: false, // 启用调试日志
 })
 ```
 
 ## 支持的构建工具
 
-| 构建工具 | 导入路径 | 状态 |
-|---------|-------------|--------|
-| Vite 5+ | `@pinfix/plugin/vite` | 稳定 |
+| 构建工具  | 导入路径                 | 状态 |
+| --------- | ------------------------ | ---- |
+| Vite 5+   | `@pinfix/plugin/vite`    | 稳定 |
 | Webpack 5 | `@pinfix/plugin/webpack` | 稳定 |
-| Rspack 2 | `@pinfix/plugin/rspack` | 稳定 |
+| Rspack 2  | `@pinfix/plugin/rspack`  | 稳定 |
 
 ## 环境要求
 
