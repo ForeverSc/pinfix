@@ -11,7 +11,9 @@
   "author": "foreversc",
   "scripts": {
     "build": "pnpm -r run build",
-    "check": "pnpm lint && pnpm format:check && pnpm test && pnpm build",
+    "build:docs": "node scripts/build-docs.mjs",
+    "check": "pnpm check:docs && pnpm lint && pnpm format:check && pnpm test && pnpm build",
+    "check:docs": "node scripts/build-docs.mjs --check",
     "dev": "pnpm -r run dev --parallel",
     "dev:vite-react": "pnpm --filter example-vite-react run dev",
     "dev:vite-vue": "pnpm --filter example-vite-vue run dev",
@@ -22,7 +24,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "prepare": "husky",
-    "release": "pnpm run build && pnpm test && semantic-release",
+    "release": "pnpm check:docs && pnpm run build && pnpm test && semantic-release",
     "test": "vitest run"
   },
   "lint-staged": {

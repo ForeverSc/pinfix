@@ -95,6 +95,10 @@ export const OVERLAY_STYLES = `
     color: #fff;
     background: rgba(255,255,255,0.08);
   }
+  .pinfix-chat-header-btn.active {
+    color: #adc7ff;
+    background: rgba(0, 112, 234, 0.16);
+  }
 
   /* Source file path bar below header */
   .pinfix-chat-path {
@@ -108,6 +112,226 @@ export const OVERLAY_STYLES = `
     text-overflow: ellipsis;
     white-space: nowrap;
     font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+  }
+
+  .pinfix-design-view {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+  }
+  .pinfix-design-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(113, 119, 134, 0.2);
+    background: #2d3135;
+    cursor: grab;
+    user-select: none;
+  }
+  .pinfix-design-header:active {
+    cursor: grabbing;
+  }
+  .pinfix-design-back-btn {
+    background: none;
+    border: none;
+    color: rgba(193, 198, 215, 0.68);
+    cursor: pointer;
+    padding: 2px;
+    line-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
+  }
+  .pinfix-design-back-btn:hover {
+    color: #fff;
+    background: rgba(224, 227, 232, 0.1);
+  }
+  .pinfix-design-header-title {
+    font-size: 14px;
+    color: #eef1f6;
+    font-weight: 600;
+  }
+  .pinfix-design-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 12px 10px;
+    display: flex;
+    flex-direction: column;
+  }
+  .pinfix-design-row {
+    display: grid;
+    grid-template-columns: minmax(92px, 0.82fr) minmax(0, 1.18fr);
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+  }
+  .pinfix-design-label {
+    font-size: 12px;
+    color: rgba(193, 198, 215, 0.68);
+    white-space: nowrap;
+  }
+  .pinfix-design-divider {
+    height: 1px;
+    background: rgba(113, 119, 134, 0.24);
+    margin: 8px 0;
+  }
+  .pinfix-design-btn {
+    border: 1px solid rgba(113, 119, 134, 0.28);
+    background: rgba(224, 227, 232, 0.08);
+    color: #eef1f6;
+    border-radius: 6px;
+    font: inherit;
+    font-size: 12px;
+    height: 28px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+  }
+  .pinfix-design-btn:hover {
+    background: rgba(224, 227, 232, 0.14);
+    border-color: rgba(173, 199, 255, 0.48);
+  }
+  .pinfix-design-input {
+    min-width: 0;
+    width: 100%;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid rgba(113, 119, 134, 0.28);
+    background: rgba(0,0,0,0.16);
+    color: #eef1f6;
+    padding: 0 8px;
+    font: inherit;
+    font-size: 12px;
+    outline: none;
+    box-sizing: border-box;
+  }
+  .pinfix-design-input:focus {
+    border-color: #adc7ff;
+    box-shadow: 0 0 0 1px rgba(0, 112, 234, 0.35);
+  }
+  .pinfix-design-number {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 5px;
+  }
+  .pinfix-design-number span {
+    font-size: 11px;
+    color: rgba(193, 198, 215, 0.55);
+  }
+  .pinfix-design-quad {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow: hidden;
+    border: 1px solid rgba(113, 119, 134, 0.28);
+    border-radius: 6px;
+    background: rgba(0,0,0,0.16);
+  }
+  .pinfix-design-quad-input {
+    height: 28px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    text-align: center;
+    padding: 0 4px;
+    border-right: 1px solid rgba(113, 119, 134, 0.22);
+  }
+  .pinfix-design-quad-input:last-child {
+    border-right: 0;
+  }
+  .pinfix-design-quad-input:focus {
+    box-shadow: inset 0 0 0 1px rgba(173, 199, 255, 0.9);
+  }
+  .pinfix-design-pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: hidden;
+    border: 1px solid rgba(113, 119, 134, 0.28);
+    border-radius: 6px;
+    background: rgba(0,0,0,0.16);
+  }
+  .pinfix-design-pair-input {
+    height: 28px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    text-align: center;
+    padding: 0 4px;
+    border-right: 1px solid rgba(113, 119, 134, 0.22);
+  }
+  .pinfix-design-pair-input:last-child {
+    border-right: 0;
+  }
+  .pinfix-design-pair-input:focus {
+    box-shadow: inset 0 0 0 1px rgba(173, 199, 255, 0.9);
+  }
+  .pinfix-design-color {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    align-items: center;
+    gap: 6px;
+  }
+  .pinfix-design-color-picker {
+    width: 28px;
+    height: 28px;
+    border: 1px solid rgba(113, 119, 134, 0.35);
+    border-radius: 6px;
+    background: rgba(0,0,0,0.16);
+    padding: 2px;
+    cursor: pointer;
+    box-sizing: border-box;
+  }
+  .pinfix-design-color-picker::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+  .pinfix-design-color-picker::-webkit-color-swatch {
+    border: 0;
+    border-radius: 4px;
+  }
+  .pinfix-design-footer {
+    border-top: 1px solid rgba(113, 119, 134, 0.2);
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: 8px;
+  }
+  .pinfix-design-primary {
+    background: #0070ea;
+    border-color: #0070ea;
+    color: #fefcff;
+  }
+  .pinfix-design-primary:hover {
+    background: #0b7df7;
+    border-color: #0b7df7;
+  }
+
+  .pinfix-adjust-box {
+    position: fixed;
+    z-index: 99998;
+    border: 2px solid #0070ea;
+    background: rgba(0, 112, 234, 0.08);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.75), 0 8px 24px rgba(0,0,0,0.18);
+    box-sizing: border-box;
+    cursor: move;
+    pointer-events: auto;
+  }
+  .pinfix-adjust-resize {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    right: -7px;
+    bottom: -7px;
+    border: 2px solid #fff;
+    border-radius: 3px;
+    background: #0070ea;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    cursor: nwse-resize;
   }
 
   /* Messages */
@@ -214,7 +438,7 @@ export const OVERLAY_STYLES = `
     content: attr(data-value) " ";
     white-space: pre-wrap;
     visibility: hidden;
-    padding: 7px 14px;
+    padding: 6px 12px;
     font: inherit;
     font-size: 13px;
     line-height: 18px;
@@ -224,6 +448,7 @@ export const OVERLAY_STYLES = `
     max-height: 80px;
     overflow: hidden;
     word-break: break-all;
+    box-sizing: border-box;
   }
 
   /* Input area */
@@ -242,7 +467,7 @@ export const OVERLAY_STYLES = `
     border: 1px solid rgba(113, 119, 134, 0.3);
     border-radius: 8px;
     color: #eef1f6;
-    padding: 7px 14px;
+    padding: 6px 12px;
     font-size: 13px;
     outline: none;
     font-family: inherit;
@@ -253,6 +478,7 @@ export const OVERLAY_STYLES = `
     overflow-y: auto;
     transition: border-color 0.2s, box-shadow 0.2s;
     word-break: break-all;
+    box-sizing: border-box;
   }
   .pinfix-chat-textarea::placeholder {
     color: rgba(193, 198, 215, 0.5);
@@ -281,6 +507,33 @@ export const OVERLAY_STYLES = `
     color: #fff;
   }
   .pinfix-chat-send:active {
+    transform: scale(0.95);
+  }
+  .pinfix-chat-input-action {
+    background: none;
+    border: none;
+    color: rgba(193, 198, 215, 0.74);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, background 0.15s, transform 0.1s;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    border-radius: 6px;
+    line-height: 0;
+  }
+  .pinfix-chat-input-action:hover {
+    color: #fff;
+    background: rgba(224, 227, 232, 0.1);
+  }
+  .pinfix-chat-input-action.active {
+    color: #adc7ff;
+    background: rgba(0, 112, 234, 0.16);
+  }
+  .pinfix-chat-input-action:active {
     transform: scale(0.95);
   }
 

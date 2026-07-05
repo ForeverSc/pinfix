@@ -1,4 +1,4 @@
-import { DATA_ATTR } from '@pinfix/shared'
+import { DATA_ATTR, type DesignPanelChanges } from '@pinfix/shared'
 import { createHighlight, showHighlight, hideHighlight, findSourceElement } from './highlight.js'
 import {
   createPinId,
@@ -19,12 +19,19 @@ import {
   resetGlobalMessages,
   destroyGlobalDialog,
   getPrompt,
+  setGlobalVisualChange,
   type Pin,
 } from './pin.js'
 import { OVERLAY_STYLES } from './styles.js'
 import { isHotkeyPressed, normalizeHotkeyEvent, parseHotkey } from './hotkey.js'
 import { isFabDragDistanceExceeded } from './drag.js'
+import { applySelectionModeState, getSelectionModeAfterSourceClick } from './selection-mode.js'
 import { createWsUrl, getWorkspaceId } from './ws-url.js'
+import {
+  createDesignPanelChangeContext,
+  getDesignPanelDefaults,
+  shouldRestoreDesignPreview,
+} from './visual-edit.js'
 
 declare const __PINFIX_WS_URL__: string | undefined
 declare const __PINFIX_HOTKEY__: string | undefined
@@ -47,9 +54,21 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 const cleanupFns: Array<() => void> = []
 let disposed = false
 let fabEl: HTMLElement | null = null
+let designPreview: {
+  pinId: string
+  target: HTMLElement
+  targetSnapshot: ReturnType<typeof snapshotTarget>
+  previewId: string
+  beforeRect: { x: number; y: number; width: number; height: number }
+  inlineStyle: Record<string, string>
+  textContent: string
+  observer: MutationObserver | null
+} | null = null
 
 const HEARTBEAT_TIMEOUT = 45_000
 const CLEANUP_KEY = '__PINFIX_OVERLAY_CLEANUP__'
+const DESIGN_PREVIEW_ATTR = 'data-pinfix-design-preview'
+let designPreviewCounter = 0
 
 export function init() {
   const previousCleanup = (window as any)[CLEANUP_KEY]
@@ -186,6 +205,19 @@ function startSession(pinId: string, source: string) {
   wsSend({ type: 'session:start', pinId, source, ...(prompt ? { prompt } : {}) })
 }
 
+function setSelectionMode(nextActive: boolean) {
+  active = nextActive
+  applySelectionModeState(active, {
+    setCursor: (cursor) => {
+      document.body.style.cursor = cursor
+    },
+    setFabActive: (active) => {
+      if (fabEl) fabEl.classList.toggle('active', active)
+    },
+    hideHighlight,
+  })
+}
+
 function getHotkeyConfig(): { keys: Set<string> } {
   const raw =
     (typeof __PINFIX_HOTKEY__ !== 'undefined' && __PINFIX_HOTKEY__) ||
@@ -211,9 +243,7 @@ function bindHotkeys() {
       e.preventDefault()
       e.stopPropagation()
       if (!active) {
-        active = true
-        document.body.style.cursor = 'crosshair'
-        if (fabEl) fabEl.classList.add('active')
+        setSelectionMode(true)
       }
     }
   }
@@ -221,10 +251,7 @@ function bindHotkeys() {
   const onKeyUp = (e: KeyboardEvent) => {
     pressed.delete(normalizeHotkeyEvent(e))
     if (!isHotkeyPressed(keys, pressed) && active) {
-      active = false
-      document.body.style.cursor = ''
-      if (fabEl) fabEl.classList.remove('active')
-      hideHighlight()
+      setSelectionMode(false)
     }
   }
 
@@ -243,6 +270,7 @@ function bindHotkeys() {
     e.preventDefault()
     e.stopPropagation()
     e.stopImmediatePropagation()
+    setSelectionMode(getSelectionModeAfterSourceClick(active))
 
     const source = el.getAttribute(DATA_ATTR)!
     const pin: Pin = {
@@ -272,6 +300,8 @@ function bindHotkeys() {
       } else {
         // Different pin — move dialog to this pin
         setActivePinId(pin.id)
+        resetDesignPreview({ restore: true })
+        setGlobalVisualChange(pin.visualChange ?? null)
         moveDialogToPin(pin, { force: true })
         showGlobalDialog()
       }
@@ -284,13 +314,18 @@ function bindHotkeys() {
     createOrShowGlobalDialog(
       shadowRoot,
       pin,
-      (content) => {
+      (content, visualChange) => {
         const activePid = getActivePinId()
         const activePin = pins.find((p) => p.id === activePid)
         if (activePin) {
           activePin.lastUserContent = content
           updatePinStatus(activePin, 'sent')
-          wsSend({ type: 'chat:send', pinId: activePin.id, content })
+          wsSend({
+            type: 'chat:send',
+            pinId: activePin.id,
+            content,
+            ...(visualChange ? { visualChange } : {}),
+          })
         }
       },
       () => {
@@ -316,16 +351,23 @@ function bindHotkeys() {
         const prompt = getPrompt()
         wsSend({ type: 'workspace:reset', ...(prompt ? { prompt } : {}) })
       },
+      () => readDesignDefaults(),
+      (changes) => previewDesignChange(changes),
+      (changes) => previewDesignChange(changes),
+      () => {
+        const activePid = getActivePinId()
+        const activePin = pins.find((p) => p.id === activePid)
+        resetDesignPreview({ restore: true })
+        if (activePin) activePin.visualChange = undefined
+        setGlobalVisualChange(null)
+      },
     )
   }
 
   const onBlur = () => {
     pressed.clear()
     if (active) {
-      active = false
-      document.body.style.cursor = ''
-      if (fabEl) fabEl.classList.remove('active')
-      hideHighlight()
+      setSelectionMode(false)
     }
   }
 
@@ -357,10 +399,7 @@ function renderFab(root: ShadowRoot) {
       fabDragged = false
       return
     }
-    active = !active
-    document.body.style.cursor = active ? 'crosshair' : ''
-    fab.classList.toggle('active', active)
-    if (!active) hideHighlight()
+    setSelectionMode(!active)
   })
 
   // Drag support
@@ -418,10 +457,14 @@ function removePin(pinId: string) {
   const idx = pins.findIndex((p) => p.id === pinId)
   if (idx === -1) return
   const pin = pins[idx]
+  if (designPreview?.pinId === pinId) {
+    resetDesignPreview({ restore: true })
+  }
   wsSend({ type: 'session:end', pinId })
   pin.el?.remove()
   pins.splice(idx, 1)
   if (getActivePinId() === pinId) {
+    setGlobalVisualChange(null)
     hideGlobalDialog()
     setActivePinId(null)
   }
@@ -440,10 +483,263 @@ function cleanupOverlay() {
     ws.close()
     ws = null
   }
+  resetDesignPreview({ restore: true })
   destroyGlobalDialog()
   for (const cleanup of cleanupFns.splice(0)) {
     cleanup()
   }
+}
+
+function readDesignDefaults(): DesignPanelChanges | null {
+  const activePid = getActivePinId()
+  const activePin = pins.find((p) => p.id === activePid)
+  if (!activePin || !(activePin.targetEl instanceof HTMLElement)) return null
+
+  const style = window.getComputedStyle(activePin.targetEl)
+  return getDesignPanelDefaults({
+    textContent: activePin.targetEl.textContent?.trim().replace(/\s+/g, ' ') ?? '',
+    flexDirection: style.flexDirection,
+    justifyContent: style.justifyContent,
+    alignItems: style.alignItems,
+    gap: style.gap,
+    padding: style.padding,
+    margin: style.margin,
+    width: style.width,
+    height: style.height,
+    borderRadius: style.borderRadius,
+    borderColor: style.borderColor,
+    borderWidth: style.borderWidth,
+    backgroundColor: style.backgroundColor,
+    color: style.color,
+    opacity: style.opacity,
+    fontFamily: style.fontFamily,
+    fontSize: style.fontSize,
+    fontWeight: style.fontWeight,
+  })
+}
+
+function previewDesignChange(
+  changes: DesignPanelChanges,
+): ReturnType<typeof createDesignPanelChangeContext> | null {
+  const activePid = getActivePinId()
+  const activePin = pins.find((p) => p.id === activePid)
+  if (!activePin || !(activePin.targetEl instanceof HTMLElement)) return null
+
+  const target = activePin.targetEl
+
+  if (designPreview && (designPreview.pinId !== activePin.id || designPreview.target !== target)) {
+    resetDesignPreview({ restore: true })
+  }
+
+  if (!designPreview) {
+    designPreview = {
+      pinId: activePin.id,
+      target,
+      targetSnapshot: snapshotTarget(target),
+      previewId: createDesignPreviewId(),
+      beforeRect: snapshotRect(target.getBoundingClientRect()),
+      inlineStyle: snapshotInlineStyle(target),
+      textContent: target.textContent ?? '',
+      observer: null,
+    }
+  }
+
+  stopDesignPreviewObserver()
+  restoreInlineStyle(target, designPreview.inlineStyle)
+  target.textContent = designPreview.textContent
+  applyDesignStyles(target, changes)
+  target.setAttribute(DESIGN_PREVIEW_ATTR, designPreview.previewId)
+  startDesignPreviewObserver(designPreview)
+
+  const change = createDesignPanelChangeContext({
+    source: activePin.source,
+    targetScope: 'element',
+    target: designPreview.targetSnapshot,
+    beforeRect: designPreview.beforeRect,
+    afterRect: snapshotRect(target.getBoundingClientRect()),
+    computedStyle: snapshotComputedStyle(window.getComputedStyle(target)),
+    parentLayout: snapshotParentLayout(activePin.targetEl.parentElement),
+    changes,
+  })
+
+  activePin.visualChange = change
+  setGlobalVisualChange(change)
+  return change
+}
+
+function resetDesignPreview(options?: { restore?: boolean }) {
+  if (!designPreview) return
+  const preview = designPreview
+  if (
+    shouldRestoreDesignPreview({
+      restore: options?.restore,
+      expectedPreviewId: preview.previewId,
+      currentPreviewId: preview.target.getAttribute(DESIGN_PREVIEW_ATTR),
+    })
+  ) {
+    restoreInlineStyle(preview.target, preview.inlineStyle)
+    preview.target.textContent = preview.textContent
+  }
+  preview.observer?.disconnect()
+  preview.target.removeAttribute(DESIGN_PREVIEW_ATTR)
+  designPreview = null
+}
+
+function createDesignPreviewId(): string {
+  designPreviewCounter += 1
+  return `pinfix_design_preview_${designPreviewCounter}`
+}
+
+function stopDesignPreviewObserver() {
+  designPreview?.observer?.disconnect()
+  if (designPreview) designPreview.observer = null
+}
+
+function startDesignPreviewObserver(preview: NonNullable<typeof designPreview>) {
+  if (typeof MutationObserver === 'undefined') return
+  const observer = new MutationObserver(() => {
+    if (designPreview?.previewId !== preview.previewId) return
+    preview.target.removeAttribute(DESIGN_PREVIEW_ATTR)
+    observer.disconnect()
+    preview.observer = null
+  })
+  observer.observe(preview.target, {
+    attributes: true,
+    childList: true,
+    characterData: true,
+    subtree: true,
+  })
+  preview.observer = observer
+}
+
+const DESIGN_STYLE_KEYS = [
+  'display',
+  'flexDirection',
+  'justifyContent',
+  'alignItems',
+  'gap',
+  'padding',
+  'margin',
+  'width',
+  'height',
+  'borderRadius',
+  'borderColor',
+  'borderWidth',
+  'backgroundColor',
+  'color',
+  'opacity',
+  'fontFamily',
+  'fontSize',
+  'fontWeight',
+] as const
+
+function snapshotInlineStyle(target: HTMLElement): Record<string, string> {
+  const snapshot: Record<string, string> = {}
+  for (const key of DESIGN_STYLE_KEYS) {
+    snapshot[key] = target.style[key]
+  }
+  return snapshot
+}
+
+function restoreInlineStyle(target: HTMLElement, snapshot: Record<string, string>) {
+  for (const key of DESIGN_STYLE_KEYS) {
+    target.style[key] = snapshot[key] ?? ''
+  }
+}
+
+function applyDesignStyles(target: HTMLElement, changes: DesignPanelChanges) {
+  const content = changes.content ?? {}
+  if (content.text !== undefined) target.textContent = content.text
+
+  const layout = changes.layout ?? {}
+  if (layout.flexDirection || layout.justifyContent || layout.alignItems || layout.gap) {
+    target.style.display = 'flex'
+  }
+  if (layout.flexDirection) target.style.flexDirection = layout.flexDirection
+  if (layout.justifyContent) target.style.justifyContent = layout.justifyContent
+  if (layout.alignItems) target.style.alignItems = layout.alignItems
+  if (layout.gap) target.style.gap = layout.gap
+
+  const spacing = changes.spacing ?? {}
+  if (spacing.padding) target.style.padding = spacing.padding
+  if (spacing.margin) target.style.margin = spacing.margin
+
+  const size = changes.size ?? {}
+  if (size.width) target.style.width = size.width
+  if (size.height) target.style.height = size.height
+
+  const style = changes.style ?? {}
+  if (style.borderRadius) target.style.borderRadius = style.borderRadius
+  if (style.borderColor) target.style.borderColor = style.borderColor
+  if (style.borderWidth) target.style.borderWidth = style.borderWidth
+  if (style.backgroundColor) target.style.backgroundColor = style.backgroundColor
+  if (style.color) target.style.color = style.color
+  if (style.opacity) target.style.opacity = style.opacity
+
+  const typography = changes.typography ?? {}
+  if (typography.fontFamily) target.style.fontFamily = typography.fontFamily
+  if (typography.fontSize) target.style.fontSize = typography.fontSize
+  if (typography.fontWeight) target.style.fontWeight = typography.fontWeight
+}
+
+function snapshotRect(rect: DOMRect): { x: number; y: number; width: number; height: number } {
+  return {
+    x: round(rect.x),
+    y: round(rect.y),
+    width: round(rect.width),
+    height: round(rect.height),
+  }
+}
+
+function snapshotTarget(target: HTMLElement) {
+  const text = target.textContent?.trim().replace(/\s+/g, ' ').slice(0, 80)
+  return {
+    tagName: target.tagName.toLowerCase(),
+    ...(target.id ? { id: target.id } : {}),
+    ...(typeof target.className === 'string' && target.className
+      ? { className: target.className }
+      : {}),
+    ...(text ? { text } : {}),
+  }
+}
+
+function snapshotComputedStyle(style: CSSStyleDeclaration): Record<string, string> {
+  return {
+    display: style.display,
+    position: style.position,
+    width: style.width,
+    height: style.height,
+    margin: style.margin,
+    padding: style.padding,
+    gap: style.gap,
+    color: style.color,
+    backgroundColor: style.backgroundColor,
+    borderRadius: style.borderRadius,
+    borderColor: style.borderColor,
+    borderWidth: style.borderWidth,
+    opacity: style.opacity,
+    fontFamily: style.fontFamily,
+    fontSize: style.fontSize,
+    fontWeight: style.fontWeight,
+  }
+}
+
+function snapshotParentLayout(parent: Element | null) {
+  if (!(parent instanceof HTMLElement)) return undefined
+  const style = window.getComputedStyle(parent)
+  return {
+    tagName: parent.tagName.toLowerCase(),
+    display: style.display,
+    gap: style.gap,
+    flexDirection: style.flexDirection,
+    justifyContent: style.justifyContent,
+    alignItems: style.alignItems,
+    gridTemplateColumns: style.gridTemplateColumns,
+  }
+}
+
+function round(value: number): number {
+  return Math.round(value * 100) / 100
 }
 
 // Auto-init when DOM is ready

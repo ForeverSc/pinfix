@@ -1,0 +1,173 @@
+import { describe, expect, it } from 'vitest'
+import {
+  createDesignPanelChangeContext,
+  createVisualChangeContext,
+  diffDesignPanelChanges,
+  getColorPickerValue,
+  getKeyboardAdjustment,
+  getDesignPanelDefaults,
+  shouldRestoreDesignPreview,
+} from '../visual-edit'
+
+describe('visual edit helpers', () => {
+  it('summarizes move and resize deltas for a selected source element', () => {
+    const change = createVisualChangeContext({
+      source: 'src/App.tsx:10:5',
+      target: { tagName: 'button', id: 'cta', className: 'primary', text: 'Save' },
+      beforeRect: { x: 10, y: 20, width: 100, height: 40 },
+      afterRect: { x: 18, y: 24, width: 120, height: 48 },
+      computedStyle: { display: 'inline-flex', position: 'static' },
+      parentLayout: { tagName: 'div', display: 'flex', gap: '12px' },
+    })
+
+    expect(change.operation).toBe('move-resize')
+    expect(change.delta).toEqual({ x: 8, y: 4, width: 20, height: 8 })
+  })
+
+  it('maps arrow keys to move and resize adjustments', () => {
+    expect(getKeyboardAdjustment({ key: 'ArrowRight', shiftKey: false })).toEqual({
+      mode: 'move',
+      x: 1,
+      y: 0,
+    })
+    expect(getKeyboardAdjustment({ key: 'ArrowDown', shiftKey: true })).toEqual({
+      mode: 'resize',
+      width: 0,
+      height: 1,
+    })
+  })
+
+  it('builds design panel changes for the selected element', () => {
+    const change = createDesignPanelChangeContext({
+      source: 'src/App.tsx:10:5',
+      targetScope: 'element',
+      target: { tagName: 'button', className: 'primary', text: 'Save' },
+      beforeRect: { x: 10, y: 20, width: 100, height: 40 },
+      afterRect: { x: 10, y: 20, width: 100, height: 40 },
+      computedStyle: { display: 'inline-flex' },
+      parentLayout: { tagName: 'div', display: 'flex', gap: '8px' },
+      changes: {
+        layout: { justifyContent: 'center', alignItems: 'center', gap: '16px' },
+        style: { borderRadius: '12px' },
+      },
+    })
+
+    expect(change.operation).toBe('design-panel')
+    expect(change.targetScope).toBe('element')
+    expect(change.changes.layout).toEqual({
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: '16px',
+    })
+    expect(change.intent).toContain('element')
+  })
+
+  it('maps computed styles into design panel defaults', () => {
+    const defaults = getDesignPanelDefaults({
+      textContent: 'Save',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: '12px 16px',
+      padding: '8px 16px',
+      margin: '0px',
+      width: '120px',
+      height: '40px',
+      borderRadius: '10px',
+      borderColor: 'rgb(229, 231, 235)',
+      borderWidth: '2px',
+      backgroundColor: 'rgb(0, 112, 234)',
+      color: 'rgb(255, 255, 255)',
+      opacity: '0.75',
+      fontFamily: '-apple-system, BlinkMacSystemFont',
+      fontSize: '14px',
+      fontWeight: '600',
+    })
+
+    expect(defaults.content.text).toBe('Save')
+    expect(defaults.layout).toEqual({
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: '12 16',
+    })
+    expect(defaults.spacing.padding).toBe('8 16')
+    expect(defaults.size.width).toBe('120')
+    expect(defaults.size.height).toBe('40')
+    expect(defaults.style.borderRadius).toBe('10')
+    expect(defaults.style.borderColor).toBe('rgb(229, 231, 235)')
+    expect(defaults.style.borderWidth).toBe('2')
+    expect(defaults.style.opacity).toBe('0.75')
+    expect(defaults.typography.fontFamily).toBe('-apple-system, BlinkMacSystemFont')
+    expect(defaults.typography.fontSize).toBe('14')
+  })
+
+  it('diffs design panel values against the style baseline', () => {
+    const diff = diffDesignPanelChanges(
+      {
+        spacing: { padding: '8px 20px', margin: '0px' },
+        style: { borderRadius: '10px' },
+      },
+      {
+        spacing: { padding: '8px 16px', margin: '0px' },
+        style: { borderRadius: '10px' },
+      },
+    )
+
+    expect(diff).toEqual({
+      spacing: { padding: '8px 20px' },
+    })
+  })
+
+  it('keeps cleared text content in design panel changes', () => {
+    const diff = diffDesignPanelChanges(
+      {
+        content: { text: '' },
+      },
+      {
+        content: { text: 'Save' },
+      },
+    )
+
+    expect(diff).toEqual({
+      content: { text: '' },
+    })
+  })
+
+  it('normalizes css colors for native color inputs', () => {
+    expect(getColorPickerValue('rgb(0, 112, 234)')).toBe('#0070ea')
+    expect(getColorPickerValue('#fff')).toBe('#ffffff')
+    expect(getColorPickerValue('var(--brand)')).toBe('#000000')
+  })
+
+  it('restores design panel previews only while the preview marker is still present', () => {
+    expect(
+      shouldRestoreDesignPreview({
+        restore: true,
+        expectedPreviewId: 'preview-1',
+        currentPreviewId: 'preview-1',
+      }),
+    ).toBe(true)
+    expect(
+      shouldRestoreDesignPreview({
+        restore: true,
+        expectedPreviewId: 'preview-1',
+        currentPreviewId: null,
+      }),
+    ).toBe(false)
+    expect(
+      shouldRestoreDesignPreview({
+        restore: true,
+        expectedPreviewId: 'preview-1',
+        currentPreviewId: 'preview-2',
+      }),
+    ).toBe(false)
+    expect(
+      shouldRestoreDesignPreview({
+        restore: false,
+        expectedPreviewId: 'preview-1',
+        currentPreviewId: 'preview-1',
+      }),
+    ).toBe(false)
+  })
+})
