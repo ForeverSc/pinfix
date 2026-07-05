@@ -369,6 +369,74 @@ describe('Integration: full chat flow', () => {
     ws.close()
   })
 
+  it('sends compact design panel changes in the Claude turn prompt', async () => {
+    let firstMessageContent = ''
+    mockedQuery.mockImplementation(({ prompt }) => {
+      const iter = (prompt as AsyncIterable<any>)[Symbol.asyncIterator]()
+      return (async function* () {
+        const first = await iter.next()
+        firstMessageContent = first.value.message.content
+        yield { type: 'result' }
+      })() as any
+    })
+
+    const { port, close } = await createWsServer({ port: 0 })
+    cleanup = close
+
+    const ws = new WebSocket(`ws://localhost:${port}`)
+    await new Promise((r) => ws.on('open', r))
+
+    ws.send(
+      JSON.stringify({ type: 'session:start', pinId: 'pin_design', source: 'src/Button.tsx:12:5' }),
+    )
+    await new Promise((r) => setTimeout(r, 50))
+    ws.send(
+      JSON.stringify({
+        type: 'chat:send',
+        pinId: 'pin_design',
+        content: 'Apply the visual adjustment I made in the browser preview.',
+        visualChange: {
+          source: 'src/Button.tsx:12:5',
+          operation: 'design-panel',
+          targetScope: 'element',
+          intent: 'Apply element design adjustments (content: text=Reset1111111111).',
+          target: { tagName: 'button', id: 'reset', className: 'primary', text: 'Reset' },
+          beforeRect: { x: 480.54, y: 332.8, width: 70.58, height: 34 },
+          afterRect: { x: 480.54, y: 332.8, width: 139.09, height: 34 },
+          delta: { x: 0, y: 0, width: 68.51, height: 0 },
+          computedStyle: {
+            display: 'block',
+            backgroundColor: 'rgb(255, 255, 255)',
+            borderRadius: '6px',
+          },
+          parentLayout: { tagName: 'div', display: 'flex', gap: '12px' },
+          changes: { content: { text: 'Reset1111111111' } },
+        },
+      }),
+    )
+    await waitForMessages(ws, 1)
+
+    expect(firstMessageContent).toContain('[source: src/Button.tsx:12:5]')
+    expect(firstMessageContent).toContain('"target"')
+    expect(firstMessageContent).toContain('"tagName": "button"')
+    expect(firstMessageContent).toContain('"id": "reset"')
+    expect(firstMessageContent).toContain('"className": "primary"')
+    expect(firstMessageContent).toContain('"text": "Reset"')
+    expect(firstMessageContent).toContain('"changes"')
+    expect(firstMessageContent).toContain('"text": "Reset1111111111"')
+    expect(firstMessageContent).not.toContain('"source": "src/Button.tsx:12:5"')
+    expect(firstMessageContent).not.toContain('"operation": "design-panel"')
+    expect(firstMessageContent).not.toContain('"intent"')
+    expect(firstMessageContent).not.toContain('"computedStyle"')
+    expect(firstMessageContent).not.toContain('"parentLayout"')
+    expect(firstMessageContent).not.toContain('"beforeRect"')
+    expect(firstMessageContent).not.toContain('"afterRect"')
+    expect(firstMessageContent).not.toContain('"delta"')
+    expect(firstMessageContent).not.toContain('"backgroundColor"')
+
+    ws.close()
+  })
+
   it('creates a new workspace Claude session only after workspace reset', async () => {
     mockedQuery.mockImplementation(({ prompt }) => {
       const iter = (prompt as AsyncIterable<any>)[Symbol.asyncIterator]()

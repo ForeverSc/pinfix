@@ -56,6 +56,7 @@ let fabEl: HTMLElement | null = null
 let designPreview: {
   pinId: string
   target: HTMLElement
+  targetSnapshot: ReturnType<typeof snapshotTarget>
   previewId: string
   beforeRect: { x: number; y: number; width: number; height: number }
   inlineStyle: Record<string, string>
@@ -530,6 +531,7 @@ function previewDesignChange(
     designPreview = {
       pinId: activePin.id,
       target,
+      targetSnapshot: snapshotTarget(target),
       previewId: createDesignPreviewId(),
       beforeRect: snapshotRect(target.getBoundingClientRect()),
       inlineStyle: snapshotInlineStyle(target),
@@ -548,7 +550,7 @@ function previewDesignChange(
   const change = createDesignPanelChangeContext({
     source: activePin.source,
     targetScope: 'element',
-    target: snapshotTarget(activePin.targetEl),
+    target: designPreview.targetSnapshot,
     beforeRect: designPreview.beforeRect,
     afterRect: snapshotRect(target.getBoundingClientRect()),
     computedStyle: snapshotComputedStyle(window.getComputedStyle(target)),
