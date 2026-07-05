@@ -26,7 +26,11 @@ import { OVERLAY_STYLES } from './styles.js'
 import { isHotkeyPressed, normalizeHotkeyEvent, parseHotkey } from './hotkey.js'
 import { isFabDragDistanceExceeded } from './drag.js'
 import { createWsUrl, getWorkspaceId } from './ws-url.js'
-import { createDesignPanelChangeContext, getDesignPanelDefaults } from './visual-edit.js'
+import {
+  createDesignPanelChangeContext,
+  getDesignPanelDefaults,
+  shouldRestoreDesignPreview,
+} from './visual-edit.js'
 
 declare const __PINFIX_WS_URL__: string | undefined
 declare const __PINFIX_HOTKEY__: string | undefined
@@ -52,13 +56,17 @@ let fabEl: HTMLElement | null = null
 let designPreview: {
   pinId: string
   target: HTMLElement
+  previewId: string
   beforeRect: { x: number; y: number; width: number; height: number }
   inlineStyle: Record<string, string>
   textContent: string
+  observer: MutationObserver | null
 } | null = null
 
 const HEARTBEAT_TIMEOUT = 45_000
 const CLEANUP_KEY = '__PINFIX_OVERLAY_CLEANUP__'
+const DESIGN_PREVIEW_ATTR = 'data-pinfix-design-preview'
+let designPreviewCounter = 0
 
 export function init() {
   const previousCleanup = (window as any)[CLEANUP_KEY]
@@ -446,12 +454,12 @@ function removePin(pinId: string) {
   const pin = pins[idx]
   if (designPreview?.pinId === pinId) {
     resetDesignPreview({ restore: true })
-    setGlobalVisualChange(null)
   }
   wsSend({ type: 'session:end', pinId })
   pin.el?.remove()
   pins.splice(idx, 1)
   if (getActivePinId() === pinId) {
+    setGlobalVisualChange(null)
     hideGlobalDialog()
     setActivePinId(null)
   }
@@ -522,15 +530,20 @@ function previewDesignChange(
     designPreview = {
       pinId: activePin.id,
       target,
+      previewId: createDesignPreviewId(),
       beforeRect: snapshotRect(target.getBoundingClientRect()),
       inlineStyle: snapshotInlineStyle(target),
       textContent: target.textContent ?? '',
+      observer: null,
     }
   }
 
+  stopDesignPreviewObserver()
   restoreInlineStyle(target, designPreview.inlineStyle)
   target.textContent = designPreview.textContent
   applyDesignStyles(target, changes)
+  target.setAttribute(DESIGN_PREVIEW_ATTR, designPreview.previewId)
+  startDesignPreviewObserver(designPreview)
 
   const change = createDesignPanelChangeContext({
     source: activePin.source,
@@ -550,11 +563,47 @@ function previewDesignChange(
 
 function resetDesignPreview(options?: { restore?: boolean }) {
   if (!designPreview) return
-  if (options?.restore) {
-    restoreInlineStyle(designPreview.target, designPreview.inlineStyle)
-    designPreview.target.textContent = designPreview.textContent
+  const preview = designPreview
+  if (
+    shouldRestoreDesignPreview({
+      restore: options?.restore,
+      expectedPreviewId: preview.previewId,
+      currentPreviewId: preview.target.getAttribute(DESIGN_PREVIEW_ATTR),
+    })
+  ) {
+    restoreInlineStyle(preview.target, preview.inlineStyle)
+    preview.target.textContent = preview.textContent
   }
+  preview.observer?.disconnect()
+  preview.target.removeAttribute(DESIGN_PREVIEW_ATTR)
   designPreview = null
+}
+
+function createDesignPreviewId(): string {
+  designPreviewCounter += 1
+  return `pinfix_design_preview_${designPreviewCounter}`
+}
+
+function stopDesignPreviewObserver() {
+  designPreview?.observer?.disconnect()
+  if (designPreview) designPreview.observer = null
+}
+
+function startDesignPreviewObserver(preview: NonNullable<typeof designPreview>) {
+  if (typeof MutationObserver === 'undefined') return
+  const observer = new MutationObserver(() => {
+    if (designPreview?.previewId !== preview.previewId) return
+    preview.target.removeAttribute(DESIGN_PREVIEW_ATTR)
+    observer.disconnect()
+    preview.observer = null
+  })
+  observer.observe(preview.target, {
+    attributes: true,
+    childList: true,
+    characterData: true,
+    subtree: true,
+  })
+  preview.observer = observer
 }
 
 const DESIGN_STYLE_KEYS = [

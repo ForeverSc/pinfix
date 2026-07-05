@@ -270,6 +270,7 @@ export function createOrShowGlobalDialog(
   onResetVisualChange: () => void,
 ): HTMLElement {
   activePinId = pin.id
+  globalVisualChange = pin.visualChange ?? null
   onSendCallback = onSend
   onCloseCallback = onClose
   onStopCallback = onStop
