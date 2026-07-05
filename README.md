@@ -100,7 +100,7 @@ Then start your dev server as usual. PinFix activates automatically in developme
 
 1. **Build plugin** transforms your JSX/TSX/Vue files to inject `data-pinfix-source` attributes with file path, line, and column metadata.
 2. **Client overlay** renders inside Shadow DOM — isolated from your app's styles. Handles pin placement, chat UI, design adjustment controls, and WebSocket communication.
-3. **Channel server** spawns automatically alongside your dev server. All pins share a workspace-level Claude Code session with full project context.
+3. **Channel server** spawns automatically alongside your dev server. The active pin uses a workspace-level Claude Code session with full project context.
 
 ## Configuration
 

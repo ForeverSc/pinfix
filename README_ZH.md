@@ -100,7 +100,7 @@ export default {
 
 1. **构建插件**转换 JSX/TSX/Vue 文件，注入 `data-pinfix-source` 属性，包含文件路径、行号和列号元数据
 2. **客户端覆盖层**在 Shadow DOM 内渲染 —— 与应用样式完全隔离。负责 pin 放置、聊天 UI、设计调整控件和 WebSocket 通信
-3. **Channel 服务**随开发服务器自动启动。所有 pin 共享工作区级别的 Claude Code 会话，拥有完整项目上下文
+3. **Channel 服务**随开发服务器自动启动。当前激活的 pin 使用工作区级别的 Claude Code 会话，拥有完整项目上下文
 
 ## 配置选项
 

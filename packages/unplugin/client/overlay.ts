@@ -70,6 +70,36 @@ const CLEANUP_KEY = '__PINFIX_OVERLAY_CLEANUP__'
 const DESIGN_PREVIEW_ATTR = 'data-pinfix-design-preview'
 let designPreviewCounter = 0
 
+export function replacePinsWithSingleTarget(
+  currentPins: Pin[],
+  nextPin: Pin,
+  removePinById: (pinId: string) => void,
+) {
+  for (const pin of [...currentPins]) {
+    removePinById(pin.id)
+  }
+  currentPins.push(nextPin)
+}
+
+export function handleRemovedPinUiState(
+  removedPinId: string,
+  activePinId: string | null,
+  effects: {
+    setVisualChange: (change: null) => void
+    hideTyping: () => void
+    setStreaming: (streaming: boolean) => void
+    hideDialog: () => void
+    setActivePinId: (pinId: string | null) => void
+  },
+) {
+  if (activePinId !== removedPinId) return
+  effects.setVisualChange(null)
+  effects.hideTyping()
+  effects.setStreaming(false)
+  effects.hideDialog()
+  effects.setActivePinId(null)
+}
+
 export function init() {
   const previousCleanup = (window as any)[CLEANUP_KEY]
   if (typeof previousCleanup === 'function' && previousCleanup !== cleanupOverlay) {
@@ -283,7 +313,7 @@ function bindHotkeys() {
       targetEl: el,
     }
 
-    pins.push(pin)
+    replacePinsWithSingleTarget(pins, pin, removePin)
     renderPin(shadowRoot, pin)
 
     // Pin dot click — toggle or switch dialog
@@ -463,11 +493,13 @@ function removePin(pinId: string) {
   wsSend({ type: 'session:end', pinId })
   pin.el?.remove()
   pins.splice(idx, 1)
-  if (getActivePinId() === pinId) {
-    setGlobalVisualChange(null)
-    hideGlobalDialog()
-    setActivePinId(null)
-  }
+  handleRemovedPinUiState(pinId, getActivePinId(), {
+    setVisualChange: setGlobalVisualChange,
+    hideTyping: hideGlobalTyping,
+    setStreaming: setGlobalStreaming,
+    hideDialog: hideGlobalDialog,
+    setActivePinId,
+  })
 }
 
 function cleanupOverlay() {
