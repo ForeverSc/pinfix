@@ -59,4 +59,21 @@ describe('overlay pin state', () => {
       'setActivePinId:null',
     ])
   })
+
+  it('picks up the active pin and re-enters selection mode when the pin is clicked', async () => {
+    ;(globalThis as any).document = {
+      readyState: 'loading',
+      addEventListener: () => {},
+    }
+    const { handlePinClick } = await import('../overlay')
+    const calls: string[] = []
+
+    handlePinClick('pin_active', 'pin_active', {
+      removePin: (pinId) => calls.push(`removePin:${pinId}`),
+      setSelectionMode: (active) => calls.push(`setSelectionMode:${active}`),
+      activatePin: (pinId) => calls.push(`activatePin:${pinId}`),
+    })
+
+    expect(calls).toEqual(['removePin:pin_active', 'setSelectionMode:true'])
+  })
 })

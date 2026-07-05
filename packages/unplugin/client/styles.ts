@@ -3,20 +3,26 @@ export const OVERLAY_STYLES = `
   .pinfix-pin-dot {
     width: 24px;
     height: 24px;
-    border-radius: 50%;
-    background: #0070ea;
-    border: 2px solid #fff;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    background: transparent;
+    border: 0;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.28));
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    --pinfix-comment-fill: #0070ea;
+    --pinfix-comment-stroke: #fff;
+  }
+  .pinfix-pin-dot svg {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
   }
   .pinfix-pin-dot[data-status="sent"] {
     animation: pinfix-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
-  .pinfix-pin-dot[data-status="sent"] { background: #2563eb; }
-  .pinfix-pin-dot[data-status="done"] { background: #22c55e; }
+  .pinfix-pin-dot[data-status="sent"] { --pinfix-comment-fill: #2563eb; }
+  .pinfix-pin-dot[data-status="done"] { --pinfix-comment-fill: #22c55e; }
   @keyframes pinfix-pulse {
     0%, 100% { opacity: 1; transform: scale(1); }
     50% { opacity: 0.7; transform: scale(1.1); }
@@ -61,6 +67,12 @@ export const OVERLAY_STYLES = `
     color: #adc7ff;
     flex-shrink: 0;
     opacity: 0.9;
+    --pinfix-comment-fill: #0070ea;
+    --pinfix-comment-stroke: #fff;
+  }
+  .pinfix-chat-header-icon svg {
+    width: 18px;
+    height: 18px;
   }
   .pinfix-chat-title {
     font-size: 14px;
@@ -864,6 +876,12 @@ export const OVERLAY_STYLES = `
     z-index: 99998;
     transition: background 0.2s, transform 0.1s;
     user-select: none;
+    --pinfix-comment-fill: #0070ea;
+    --pinfix-comment-stroke: #fff;
+  }
+  .pinfix-fab svg {
+    width: 24px;
+    height: 24px;
   }
   .pinfix-fab:hover {
     background: #3a3f44;
@@ -873,5 +891,7 @@ export const OVERLAY_STYLES = `
     background: #0070ea;
     color: #fff;
     border-color: #0070ea;
+    --pinfix-comment-fill: #fff;
+    --pinfix-comment-stroke: #0070ea;
   }
 `

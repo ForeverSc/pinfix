@@ -553,11 +553,12 @@
       /* Cursor */
       .demo-cursor {
         position: absolute;
-        width: 20px;
-        height: 20px;
+        width: 28px;
+        height: 28px;
         pointer-events: none;
         z-index: 10;
         opacity: 0;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.28));
         transition:
           left 0.8s cubic-bezier(0.4, 0, 0.2, 1),
           top 0.8s cubic-bezier(0.4, 0, 0.2, 1),
@@ -566,17 +567,14 @@
       .demo-cursor.visible {
         opacity: 1;
       }
-      .demo-cursor.crosshair svg {
+      .demo-cursor-comment {
         display: none;
       }
-      .demo-cursor.crosshair::after {
-        content: '+';
-        font-size: 24px;
-        font-weight: 300;
-        color: #0070ea;
-        position: absolute;
-        top: -4px;
-        left: 4px;
+      .demo-cursor.comment .demo-cursor-arrow {
+        display: none;
+      }
+      .demo-cursor.comment .demo-cursor-comment {
+        display: block;
       }
 
       /* Pin — matches real .pinfix-pin-dot */
@@ -584,10 +582,14 @@
         position: absolute;
         width: 24px;
         height: 24px;
-        border-radius: 50%;
-        background: #0070ea;
-        border: 2px solid #fff;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        background: transparent;
+        border: 0;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.28));
+        --pinfix-comment-fill: #0070ea;
+        --pinfix-comment-stroke: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         opacity: 0;
         transform: scale(0);
         transition:
@@ -598,6 +600,11 @@
       .demo-pin.visible {
         opacity: 1;
         transform: scale(1);
+      }
+      .demo-pin svg {
+        width: 28px;
+        height: 28px;
+        flex-shrink: 0;
       }
       .demo-pin.pulse {
         animation: demo-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
@@ -648,13 +655,17 @@
         background: #2d3135;
       }
       .demo-dialog-header .icon {
-        width: 22px;
-        height: 22px;
-        background: rgba(0, 112, 234, 0.2);
-        border-radius: 4px;
+        width: 18px;
+        height: 18px;
+        --pinfix-comment-fill: #0070ea;
+        --pinfix-comment-stroke: #fff;
         display: flex;
         align-items: center;
         justify-content: center;
+      }
+      .demo-dialog-header .icon svg {
+        width: 18px;
+        height: 18px;
       }
       .demo-dialog-header .title {
         font-size: 13px;
@@ -959,6 +970,8 @@
         justify-content: center;
         color: #adc7ff;
         z-index: 30;
+        --pinfix-comment-fill: #0070ea;
+        --pinfix-comment-stroke: #fff;
         transition:
           background 0.2s,
           transform 0.15s,
@@ -969,6 +982,12 @@
         color: #fff;
         border-color: #0070ea;
         transform: scale(1.05);
+        --pinfix-comment-fill: #fff;
+        --pinfix-comment-stroke: #0070ea;
+      }
+      .demo-fab svg {
+        width: 24px;
+        height: 24px;
       }
     </style>
   </head>
@@ -1048,13 +1067,45 @@
 
           <!-- Animated cursor -->
           <div class="demo-cursor" id="demo-cursor">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="#333">
+            <svg class="demo-cursor-arrow" width="20" height="20" viewBox="0 0 24 24" fill="#333">
               <path d="M5 3l14 8-6 2-3 7-5-17z" />
+            </svg>
+            <svg
+              class="demo-cursor-comment"
+              width="28"
+              height="28"
+              viewBox="0 0 24 24"
+              fill="#0070ea"
+              stroke="#fff"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M12 2.5C6.75 2.5 2.5 6.25 2.5 10.9c0 2.15.92 4.1 2.45 5.56-.13.75-.42 1.58-.87 2.48-.18.36.15.77.54.67 1.45-.37 2.57-.83 3.36-1.37 1.36.55 2.9.86 4.52.86 5.25 0 9.5-3.75 9.5-8.4S17.25 2.5 12 2.5Z"
+              />
+              <path d="M12 8v6" fill="none" />
+              <path d="M9 11h6" fill="none" />
             </svg>
           </div>
 
           <!-- Pin dot -->
-          <div class="demo-pin" id="demo-pin"></div>
+          <div class="demo-pin" id="demo-pin">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="var(--pinfix-comment-fill, #0070ea)"
+              stroke="var(--pinfix-comment-stroke, #fff)"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M12 2.5C6.75 2.5 2.5 6.25 2.5 10.9c0 2.15.92 4.1 2.45 5.56-.13.75-.42 1.58-.87 2.48-.18.36.15.77.54.67 1.45-.37 2.57-.83 3.36-1.37 1.36.55 2.9.86 4.52.86 5.25 0 9.5-3.75 9.5-8.4S17.25 2.5 12 2.5Z"
+              />
+            </svg>
+          </div>
 
           <!-- FAB button -->
           <div class="demo-fab" id="demo-fab">
@@ -1062,14 +1113,17 @@
               width="16"
               height="16"
               viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
+              fill="var(--pinfix-comment-fill, #0070ea)"
+              stroke="var(--pinfix-comment-stroke, #fff)"
+              stroke-width="2.5"
               stroke-linecap="round"
               stroke-linejoin="round"
             >
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+              <path
+                d="M12 2.5C6.75 2.5 2.5 6.25 2.5 10.9c0 2.15.92 4.1 2.45 5.56-.13.75-.42 1.58-.87 2.48-.18.36.15.77.54.67 1.45-.37 2.57-.83 3.36-1.37 1.36.55 2.9.86 4.52.86 5.25 0 9.5-3.75 9.5-8.4S17.25 2.5 12 2.5Z"
+              />
+              <path d="M12 8v6" fill="none" />
+              <path d="M9 11h6" fill="none" />
             </svg>
           </div>
 
@@ -1081,30 +1135,19 @@
                   width="12"
                   height="12"
                   viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#adc7ff"
+                  fill="var(--pinfix-comment-fill, #0070ea)"
+                  stroke="var(--pinfix-comment-stroke, #fff)"
                   stroke-width="2.5"
                   stroke-linecap="round"
                   stroke-linejoin="round"
                 >
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  <path
+                    d="M12 2.5C6.75 2.5 2.5 6.25 2.5 10.9c0 2.15.92 4.1 2.45 5.56-.13.75-.42 1.58-.87 2.48-.18.36.15.77.54.67 1.45-.37 2.57-.83 3.36-1.37 1.36.55 2.9.86 4.52.86 5.25 0 9.5-3.75 9.5-8.4S17.25 2.5 12 2.5Z"
+                  />
                 </svg>
               </div>
               <span class="title">PinFix</span>
               <div class="actions">
-                <div class="hdr-btn">
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path d="M5 12h14" />
-                  </svg>
-                </div>
                 <div class="hdr-btn">
                   <svg
                     width="14"
@@ -1499,9 +1542,9 @@
             fab.classList.add('active')
           }, 1300)
 
-          // Step 3: Cursor becomes crosshair, moves toward button
+          // Step 3: Cursor carries the comment icon, moves toward button
           setTimeout(() => {
-            cursor.classList.add('crosshair')
+            cursor.classList.add('comment')
             cursor.style.left = btnCenterX + 'px'
             cursor.style.top = btnCenterY + 'px'
           }, 1700)

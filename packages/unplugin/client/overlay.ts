@@ -6,9 +6,7 @@ import {
   updatePinStatus,
   createOrShowGlobalDialog,
   moveDialogToPin,
-  showGlobalDialog,
   hideGlobalDialog,
-  isGlobalDialogVisible,
   getActivePinId,
   setActivePinId,
   appendGlobalMessage,
@@ -25,7 +23,13 @@ import {
 import { OVERLAY_STYLES } from './styles.js'
 import { isHotkeyPressed, normalizeHotkeyEvent, parseHotkey } from './hotkey.js'
 import { isFabDragDistanceExceeded } from './drag.js'
-import { applySelectionModeState, getSelectionModeAfterSourceClick } from './selection-mode.js'
+import { ICON_COMMENT_PLUS } from './icons.js'
+import {
+  SELECTION_CURSOR_ATTR,
+  applySelectionModeState,
+  createSelectionCursorRule,
+  getSelectionModeAfterSourceClick,
+} from './selection-mode.js'
 import { createWsUrl, getWorkspaceId } from './ws-url.js'
 import {
   createDesignPanelChangeContext,
@@ -68,6 +72,7 @@ let designPreview: {
 const HEARTBEAT_TIMEOUT = 45_000
 const CLEANUP_KEY = '__PINFIX_OVERLAY_CLEANUP__'
 const DESIGN_PREVIEW_ATTR = 'data-pinfix-design-preview'
+const SELECTION_CURSOR_STYLE_ID = 'pinfix-selection-cursor-style'
 let designPreviewCounter = 0
 
 export function replacePinsWithSingleTarget(
@@ -98,6 +103,23 @@ export function handleRemovedPinUiState(
   effects.setStreaming(false)
   effects.hideDialog()
   effects.setActivePinId(null)
+}
+
+export function handlePinClick(
+  pinId: string,
+  activePinId: string | null,
+  effects: {
+    removePin: (pinId: string) => void
+    setSelectionMode: (active: boolean) => void
+    activatePin: (pinId: string) => void
+  },
+) {
+  if (activePinId === pinId) {
+    effects.removePin(pinId)
+    effects.setSelectionMode(true)
+    return
+  }
+  effects.activatePin(pinId)
 }
 
 export function init() {
@@ -238,14 +260,32 @@ function startSession(pinId: string, source: string) {
 function setSelectionMode(nextActive: boolean) {
   active = nextActive
   applySelectionModeState(active, {
-    setCursor: (cursor) => {
-      document.body.style.cursor = cursor
-    },
+    setCursor: setPageCursor,
     setFabActive: (active) => {
       if (fabEl) fabEl.classList.toggle('active', active)
     },
     hideHighlight,
   })
+}
+
+function setPageCursor(cursor: string) {
+  document.body.style.cursor = cursor
+  document.documentElement.style.cursor = cursor
+
+  if (!cursor) {
+    document.documentElement.removeAttribute(SELECTION_CURSOR_ATTR)
+    document.getElementById(SELECTION_CURSOR_STYLE_ID)?.remove()
+    return
+  }
+
+  document.documentElement.setAttribute(SELECTION_CURSOR_ATTR, 'true')
+  let styleEl = document.getElementById(SELECTION_CURSOR_STYLE_ID) as HTMLStyleElement | null
+  if (!styleEl) {
+    styleEl = document.createElement('style')
+    styleEl.id = SELECTION_CURSOR_STYLE_ID
+    document.head.appendChild(styleEl)
+  }
+  styleEl.textContent = createSelectionCursorRule(cursor)
 }
 
 function getHotkeyConfig(): { keys: Set<string> } {
@@ -316,25 +356,19 @@ function bindHotkeys() {
     replacePinsWithSingleTarget(pins, pin, removePin)
     renderPin(shadowRoot, pin)
 
-    // Pin dot click — toggle or switch dialog
+    // Pin dot click — pick up current pin, or switch if legacy state exists
     pin.el!.addEventListener('click', (ev) => {
       ev.stopPropagation()
-      const currentActive = getActivePinId()
-      if (currentActive === pin.id) {
-        // Same pin — toggle visibility
-        if (isGlobalDialogVisible()) {
-          hideGlobalDialog()
-        } else {
-          showGlobalDialog()
-        }
-      } else {
-        // Different pin — move dialog to this pin
-        setActivePinId(pin.id)
-        resetDesignPreview({ restore: true })
-        setGlobalVisualChange(pin.visualChange ?? null)
-        moveDialogToPin(pin, { force: true })
-        showGlobalDialog()
-      }
+      handlePinClick(pin.id, getActivePinId(), {
+        removePin,
+        setSelectionMode,
+        activatePin: () => {
+          setActivePinId(pin.id)
+          resetDesignPreview({ restore: true })
+          setGlobalVisualChange(pin.visualChange ?? null)
+          moveDialogToPin(pin, { force: true })
+        },
+      })
     })
 
     // Start session
@@ -412,7 +446,7 @@ function bindHotkeys() {
     document.removeEventListener('mousemove', onMouseMove)
     document.removeEventListener('click', onClick, true)
     window.removeEventListener('blur', onBlur)
-    document.body.style.cursor = ''
+    setPageCursor('')
   })
 }
 
@@ -420,7 +454,7 @@ function renderFab(root: ShadowRoot) {
   const fab = document.createElement('div')
   fab.className = 'pinfix-fab'
   fab.title = 'PinFix: click to annotate'
-  fab.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`
+  fab.innerHTML = ICON_COMMENT_PLUS
 
   let fabDragged = false
 
