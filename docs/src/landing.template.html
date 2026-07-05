@@ -143,23 +143,6 @@
       .nav-btn:hover {
         opacity: 0.9;
       }
-      .lang-link {
-        color: var(--muted);
-        text-decoration: none;
-        font-size: 13px;
-        font-weight: 600;
-        padding: 5px 10px;
-        border-radius: 6px;
-        border: 1px solid var(--border);
-        background: var(--surface);
-        transition:
-          border-color 0.2s,
-          color 0.2s;
-      }
-      .lang-link:hover {
-        color: var(--on-surface);
-        border-color: var(--primary);
-      }
 
       /* Hero */
       .hero {
@@ -998,7 +981,7 @@
           <a href="#how-it-works" data-i18n="nav.how">{{navHow}}</a>
           <a href="#features" data-i18n="nav.features">{{navFeatures}}</a>
           <a href="#quickstart" data-i18n="nav.quickstart">{{navQuickstart}}</a>
-          <a class="lang-link" href="{{languageLinkHref}}" hreflang="{{languageLinkHreflang}}"
+          <a href="{{languageLinkHref}}" hreflang="{{languageLinkHreflang}}"
             >{{languageLinkText}}</a
           >
           <a
