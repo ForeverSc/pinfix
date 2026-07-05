@@ -1,5 +1,18 @@
 # @pinfix/plugin Changelog
 
+# [1.1.0](https://github.com/ForeverSc/pinfix/compare/@pinfix/plugin@1.0.4...@pinfix/plugin@1.1.0) (2026-07-05)
+
+### Bug Fixes
+
+- **client:** avoid restoring previews after hmr updates ([8e640f0](https://github.com/ForeverSc/pinfix/commit/8e640f0bb5adeb1d008af505d35660cac780edfc))
+- **client:** compact design panel visual prompts ([a6528c4](https://github.com/ForeverSc/pinfix/commit/a6528c4061c6462b49c0a839a8dd234b0e4e3c1b))
+- **client:** exit selection mode after pinning element ([adf79f0](https://github.com/ForeverSc/pinfix/commit/adf79f0211a07d6611faa6f74bf29b3faa45906f))
+
+### Features
+
+- **client:** add visual design adjustment panel ([f3460dd](https://github.com/ForeverSc/pinfix/commit/f3460ddb9919494f88e848dd4adb7115b8b28e08))
+- **client:** align design panel with Codex inspector ([e159880](https://github.com/ForeverSc/pinfix/commit/e15988028452b259b8bcf0ad6487a1ecb41ece4a))
+
 ## [1.0.4](https://github.com/ForeverSc/pinfix/compare/@pinfix/plugin@1.0.3...@pinfix/plugin@1.0.4) (2026-06-07)
 
 ### Bug Fixes
