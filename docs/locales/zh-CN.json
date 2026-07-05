@@ -1,5 +1,5 @@
 {
-  "outputPath": "docs/zh/index.html",
+  "outputPath": "docs-dist/zh/index.html",
   "htmlLang": "zh-CN",
   "canonicalUrl": "https://foreversc.github.io/pinfix/zh/",
   "title": "PinFix - Claude Code 可视化前端编辑工具",

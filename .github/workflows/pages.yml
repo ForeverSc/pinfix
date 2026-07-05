@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - docs/src/**
+      - docs/**
       - scripts/build-docs.mjs
       - package.json
       - pnpm-lock.yaml
@@ -52,7 +52,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: docs
+          path: docs-dist
 
       - name: Deploy to GitHub Pages
         id: deployment

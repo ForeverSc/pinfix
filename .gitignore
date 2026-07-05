@@ -4,8 +4,4 @@ client-dist
 *.tsbuildinfo
 .DS_Store
 packages/unplugin/README.md
-docs/index.html
-docs/zh/index.html
-docs/llms.txt
-docs/robots.txt
-docs/sitemap.xml
+docs-dist

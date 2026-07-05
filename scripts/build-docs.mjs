@@ -2,8 +2,9 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { format, resolveConfig } from 'prettier'
 
-const TEMPLATE_PATH = 'docs/src/landing.template.html'
-const LOCALE_PATHS = ['docs/src/locales/en.json', 'docs/src/locales/zh-CN.json']
+const TEMPLATE_PATH = 'docs/landing.template.html'
+const LOCALE_PATHS = ['docs/locales/en.json', 'docs/locales/zh-CN.json']
+const OUTPUT_DIR = 'docs-dist'
 const SITE_BASE_URL = 'https://foreversc.github.io/pinfix'
 const TODAY = '2026-07-05'
 const RAW_HTML_KEYS = new Set(['heroTitle'])
@@ -147,9 +148,9 @@ async function main() {
     await writeOrCheck(locale.outputPath, await renderTemplate(template, locale))
   }
 
-  await writeOrCheck('docs/sitemap.xml', renderSitemap(locales))
-  await writeOrCheck('docs/llms.txt', renderLlms())
-  await writeOrCheck('docs/robots.txt', renderRobots())
+  await writeOrCheck(`${OUTPUT_DIR}/sitemap.xml`, renderSitemap(locales))
+  await writeOrCheck(`${OUTPUT_DIR}/llms.txt`, renderLlms())
+  await writeOrCheck(`${OUTPUT_DIR}/robots.txt`, renderRobots())
 }
 
 main().catch((error) => {

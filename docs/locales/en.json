@@ -1,5 +1,5 @@
 {
-  "outputPath": "docs/index.html",
+  "outputPath": "docs-dist/index.html",
   "htmlLang": "en",
   "canonicalUrl": "https://foreversc.github.io/pinfix/",
   "title": "PinFix - Visual Frontend Editing for Claude Code",
