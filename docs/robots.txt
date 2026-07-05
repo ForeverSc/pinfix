@@ -1,9 +1,0 @@
-# On GitHub project Pages this file is published at /pinfix/robots.txt.
-# Crawler-wide robots rules are only auto-read from the origin root, for example:
-# https://foreversc.github.io/robots.txt
-# This file becomes authoritative if PinFix is served from a custom domain root.
-
-User-agent: *
-Allow: /
-
-Sitemap: https://foreversc.github.io/pinfix/sitemap.xml

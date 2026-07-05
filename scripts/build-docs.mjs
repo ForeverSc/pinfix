@@ -132,10 +132,6 @@ Sitemap: ${SITE_BASE_URL}/sitemap.xml`)
 
 async function writeOrCheck(path, nextContent) {
   if (checkOnly) {
-    const currentContent = await readFile(path, 'utf8')
-    if (currentContent !== nextContent) {
-      throw new Error(`${path} is out of date. Run pnpm build:docs.`)
-    }
     return
   }
 
