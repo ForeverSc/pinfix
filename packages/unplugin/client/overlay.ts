@@ -25,6 +25,7 @@ import {
 import { OVERLAY_STYLES } from './styles.js'
 import { isHotkeyPressed, normalizeHotkeyEvent, parseHotkey } from './hotkey.js'
 import { isFabDragDistanceExceeded } from './drag.js'
+import { applySelectionModeState, getSelectionModeAfterSourceClick } from './selection-mode.js'
 import { createWsUrl, getWorkspaceId } from './ws-url.js'
 import {
   createDesignPanelChangeContext,
@@ -204,6 +205,19 @@ function startSession(pinId: string, source: string) {
   wsSend({ type: 'session:start', pinId, source, ...(prompt ? { prompt } : {}) })
 }
 
+function setSelectionMode(nextActive: boolean) {
+  active = nextActive
+  applySelectionModeState(active, {
+    setCursor: (cursor) => {
+      document.body.style.cursor = cursor
+    },
+    setFabActive: (active) => {
+      if (fabEl) fabEl.classList.toggle('active', active)
+    },
+    hideHighlight,
+  })
+}
+
 function getHotkeyConfig(): { keys: Set<string> } {
   const raw =
     (typeof __PINFIX_HOTKEY__ !== 'undefined' && __PINFIX_HOTKEY__) ||
@@ -229,9 +243,7 @@ function bindHotkeys() {
       e.preventDefault()
       e.stopPropagation()
       if (!active) {
-        active = true
-        document.body.style.cursor = 'crosshair'
-        if (fabEl) fabEl.classList.add('active')
+        setSelectionMode(true)
       }
     }
   }
@@ -239,10 +251,7 @@ function bindHotkeys() {
   const onKeyUp = (e: KeyboardEvent) => {
     pressed.delete(normalizeHotkeyEvent(e))
     if (!isHotkeyPressed(keys, pressed) && active) {
-      active = false
-      document.body.style.cursor = ''
-      if (fabEl) fabEl.classList.remove('active')
-      hideHighlight()
+      setSelectionMode(false)
     }
   }
 
@@ -261,6 +270,7 @@ function bindHotkeys() {
     e.preventDefault()
     e.stopPropagation()
     e.stopImmediatePropagation()
+    setSelectionMode(getSelectionModeAfterSourceClick(active))
 
     const source = el.getAttribute(DATA_ATTR)!
     const pin: Pin = {
@@ -357,10 +367,7 @@ function bindHotkeys() {
   const onBlur = () => {
     pressed.clear()
     if (active) {
-      active = false
-      document.body.style.cursor = ''
-      if (fabEl) fabEl.classList.remove('active')
-      hideHighlight()
+      setSelectionMode(false)
     }
   }
 
@@ -392,10 +399,7 @@ function renderFab(root: ShadowRoot) {
       fabDragged = false
       return
     }
-    active = !active
-    document.body.style.cursor = active ? 'crosshair' : ''
-    fab.classList.toggle('active', active)
-    if (!active) hideHighlight()
+    setSelectionMode(!active)
   })
 
   // Drag support
