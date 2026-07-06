@@ -586,10 +586,25 @@
         opacity: 1;
         transform: translate(-50%, -50%) scale(1);
       }
+      .demo-selection-marker.confirmed {
+        animation: demo-marker-confirm 0.16s ease-out;
+      }
+      .demo-selection-marker.settled {
+        transition: none;
+      }
       .demo-selection-marker svg {
         width: 28px;
         height: 28px;
         display: block;
+      }
+      @keyframes demo-marker-confirm {
+        0%,
+        100% {
+          transform: translate(-50%, -50%) scale(1);
+        }
+        45% {
+          transform: translate(-50%, -50%) scale(0.92);
+        }
       }
 
       /* Pin — matches real .pinfix-pin-dot */
@@ -606,15 +621,11 @@
         align-items: center;
         justify-content: center;
         opacity: 0;
-        transform: scale(0);
-        transition:
-          opacity 0.3s,
-          transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        transition: none;
         z-index: 5;
       }
       .demo-pin.visible {
         opacity: 1;
-        transform: scale(1);
       }
       .demo-pin svg {
         width: 28px;
@@ -645,7 +656,8 @@
         border: 1px solid rgba(113, 119, 134, 0.3);
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
         opacity: 0;
-        transform: scale(0.9) translateY(8px);
+        transform: scale(0.98);
+        transform-origin: top left;
         transition:
           opacity 0.3s,
           transform 0.3s;
@@ -657,7 +669,7 @@
       }
       .demo-dialog.visible {
         opacity: 1;
-        transform: scale(1) translateY(0);
+        transform: scale(1);
       }
 
       /* Dialog header — matches .pinfix-chat-header */
@@ -1510,10 +1522,10 @@
           const fabLeft = fab.offsetLeft + fab.offsetWidth / 2
           const fabTop = fab.offsetTop + fab.offsetHeight / 2
           // btn.offsetParent is demo-body (position:relative), so offset is already absolute within demo-body
-          const btnCenterX = btn.offsetLeft + btn.offsetWidth / 2
-          const btnCenterY = btn.offsetTop + btn.offsetHeight / 2
-          const pinLeft = btn.offsetLeft + btn.offsetWidth - 8
-          const pinTop = btn.offsetTop - 8
+          const btnPinX = btn.offsetLeft + btn.offsetWidth
+          const btnPinY = btn.offsetTop
+          const pinLeft = btnPinX - 12
+          const pinTop = btnPinY - 12
           // Place dialog to the right of the pin, aligned to the bubble's visual top
           const demoBody = btn.closest('.demo-body')
           const bodyWidth = demoBody ? demoBody.offsetWidth : 800
@@ -1547,8 +1559,8 @@
 
           // Step 3: Picked-up marker moves toward button
           setTimeout(() => {
-            marker.style.left = btnCenterX + 'px'
-            marker.style.top = btnCenterY + 'px'
+            marker.style.left = btnPinX + 'px'
+            marker.style.top = btnPinY + 'px'
           }, 1700)
 
           // Step 4: Highlight button on hover
@@ -1556,32 +1568,36 @@
             btn.classList.add('highlighted')
           }, 2500)
 
-          // Step 5: Click — show pin at card top-right, hide cursor, deactivate FAB
+          // Step 5: Click — confirm the selected point
           setTimeout(() => {
-            pin.style.left = pinLeft + 'px'
-            pin.style.top = pinTop + 'px'
-            pin.classList.add('visible')
-            pin.classList.add('pulse')
-            marker.classList.remove('visible')
+            marker.classList.add('confirmed')
             fab.classList.remove('active')
             fab.classList.remove('picked-up')
             fab.classList.add('hidden')
           }, 3100)
 
-          // Step 6: Show dialog top-aligned with the pin
+          // Step 6: Replace marker with pin at the same point
+          setTimeout(() => {
+            pin.style.left = pinLeft + 'px'
+            pin.style.top = pinTop + 'px'
+            marker.classList.add('settled')
+            pin.classList.add('visible')
+            marker.classList.remove('visible')
+          }, 3180)
+
+          // Step 7: Show dialog top-aligned with the pin
           setTimeout(() => {
             dialog.style.left = dlgLeft + 'px'
             dialog.style.top = dlgTop + 'px'
             dialog.classList.add('visible')
-          }, 3600)
+          }, 3250)
 
-          // Step 7: Show user message
+          // Step 8: Show user message
           setTimeout(() => {
             userMsg.classList.add('visible')
-            pin.classList.remove('pulse')
           }, 4100)
 
-          // Step 8: Claude Code streams response
+          // Step 9: Claude Code streams response
           setTimeout(() => {
             aiMsg.classList.add('visible')
             let i = 0
@@ -1595,13 +1611,13 @@
             typeChar()
           }, 4700)
 
-          // Step 9: Button turns red (HMR effect)
+          // Step 10: Button turns red (HMR effect)
           setTimeout(() => {
             btn.style.transition = 'background 0.5s ease'
             btn.style.background = '#ef4444'
           }, 6500)
 
-          // Step 10: Let the completed state settle, then reset smoothly
+          // Step 11: Let the completed state settle, then reset smoothly
           setTimeout(() => {
             dialog.classList.remove('visible')
             pin.classList.remove('visible')
