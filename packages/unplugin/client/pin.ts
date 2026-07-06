@@ -39,7 +39,7 @@ const DIALOG_WIDTH = 320
 const DIALOG_HEIGHT = 448
 const DIALOG_MARGIN = 8
 const DIALOG_PIN_GAP = 16
-const DIALOG_PIN_Y_OFFSET = -4
+const DIALOG_PIN_Y_OFFSET = -11
 
 let pinCounter = 0
 
@@ -297,11 +297,6 @@ export function createOrShowGlobalDialog(
   const header = document.createElement('div')
   header.className = 'pinfix-chat-header'
 
-  const headerIcon = document.createElement('div')
-  headerIcon.className = 'pinfix-chat-header-icon'
-  headerIcon.innerHTML = ICON_COMMENT
-  header.appendChild(headerIcon)
-
   const titleSpan = document.createElement('span')
   titleSpan.className = 'pinfix-chat-title'
   titleSpan.textContent = 'PinFix'
@@ -342,8 +337,8 @@ export function createOrShowGlobalDialog(
   // Drag handling
   let dragX = 0
   let dragY = 0
-  let dialogX = pin.x + 16
-  let dialogY = pin.y - 4
+  let dialogX = pin.x + DIALOG_PIN_GAP
+  let dialogY = pin.y + DIALOG_PIN_Y_OFFSET
 
   function initDrag(e: MouseEvent) {
     if ((e.target as HTMLElement).closest?.('button')) return

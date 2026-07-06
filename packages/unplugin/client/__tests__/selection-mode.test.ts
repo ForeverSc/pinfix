@@ -11,24 +11,24 @@ describe('selection mode state', () => {
     expect(getSelectionModeAfterSourceClick(true)).toBe(false)
   })
 
-  it('uses a comment cursor while selecting a source element', () => {
+  it('hides the native cursor and shows the picked-up marker while selecting', () => {
     const controls = {
       setCursor: vi.fn(),
       setFabActive: vi.fn(),
+      setMarkerVisible: vi.fn(),
       hideHighlight: vi.fn(),
     }
 
     applySelectionModeState(true, controls)
 
     expect(controls.setCursor).toHaveBeenCalledWith(SELECTION_CURSOR)
-    expect(SELECTION_CURSOR).toContain('data:image/svg+xml')
-    expect(SELECTION_CURSOR).toContain('pointer')
-    expect(SELECTION_CURSOR).not.toBe('crosshair')
+    expect(SELECTION_CURSOR).toBe('none')
     expect(controls.setFabActive).toHaveBeenCalledWith(true)
+    expect(controls.setMarkerVisible).toHaveBeenCalledWith(true)
     expect(controls.hideHighlight).not.toHaveBeenCalled()
   })
 
-  it('creates a page-wide cursor rule so selectable elements cannot override the comment cursor', () => {
+  it('creates a page-wide cursor rule so selectable elements cannot override the hidden cursor', () => {
     const rule = createSelectionCursorRule(SELECTION_CURSOR)
 
     expect(rule).toContain('html[data-pinfix-selecting="true"]')
@@ -41,6 +41,7 @@ describe('selection mode state', () => {
     const controls = {
       setCursor: vi.fn(),
       setFabActive: vi.fn(),
+      setMarkerVisible: vi.fn(),
       hideHighlight: vi.fn(),
     }
 
@@ -48,6 +49,7 @@ describe('selection mode state', () => {
 
     expect(controls.setCursor).toHaveBeenCalledWith('')
     expect(controls.setFabActive).toHaveBeenCalledWith(false)
+    expect(controls.setMarkerVisible).toHaveBeenCalledWith(false)
     expect(controls.hideHighlight).toHaveBeenCalledOnce()
   })
 })

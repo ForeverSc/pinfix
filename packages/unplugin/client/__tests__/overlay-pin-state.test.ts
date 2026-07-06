@@ -35,6 +35,18 @@ describe('overlay pin state', () => {
     expect(pins).toEqual([next])
   })
 
+  it('shows the fixed FAB only when there are no pins on the page', async () => {
+    ;(globalThis as any).document = {
+      readyState: 'loading',
+      addEventListener: () => {},
+    }
+    const { shouldShowFabForPinCount } = await import('../overlay')
+
+    expect(shouldShowFabForPinCount(0)).toBe(true)
+    expect(shouldShowFabForPinCount(1)).toBe(false)
+    expect(shouldShowFabForPinCount(2)).toBe(false)
+  })
+
   it('resets active pin UI state when the active target is removed', async () => {
     ;(globalThis as any).document = {
       readyState: 'loading',
@@ -60,7 +72,7 @@ describe('overlay pin state', () => {
     ])
   })
 
-  it('picks up the active pin and re-enters selection mode when the pin is clicked', async () => {
+  it('keeps the active pin visible and re-enters selection mode when the pin is clicked', async () => {
     ;(globalThis as any).document = {
       readyState: 'loading',
       addEventListener: () => {},
@@ -69,11 +81,29 @@ describe('overlay pin state', () => {
     const calls: string[] = []
 
     handlePinClick('pin_active', 'pin_active', {
-      removePin: (pinId) => calls.push(`removePin:${pinId}`),
+      beginRelocatingPin: (pinId) => calls.push(`beginRelocatingPin:${pinId}`),
       setSelectionMode: (active) => calls.push(`setSelectionMode:${active}`),
       activatePin: (pinId) => calls.push(`activatePin:${pinId}`),
     })
 
-    expect(calls).toEqual(['removePin:pin_active', 'setSelectionMode:true'])
+    expect(calls).toEqual(['beginRelocatingPin:pin_active', 'setSelectionMode:true'])
+  })
+
+  it('moves a picked-up pin with the pointer without changing its center coordinate contract', async () => {
+    ;(globalThis as any).document = {
+      readyState: 'loading',
+      addEventListener: () => {},
+    }
+    const { movePinToPointer } = await import('../overlay')
+    const pin = makePin('pin_active')
+    const style: Record<string, string> = {}
+    pin.el = { style } as unknown as HTMLElement
+
+    movePinToPointer(pin, { x: 88, y: 144 })
+
+    expect(pin.x).toBe(88)
+    expect(pin.y).toBe(144)
+    expect(style.left).toBe('76px')
+    expect(style.top).toBe('132px')
   })
 })

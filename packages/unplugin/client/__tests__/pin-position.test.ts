@@ -42,7 +42,7 @@ describe('dialog positioning', () => {
     expect(position.y).toBe(144)
   })
 
-  it('uses the preferred pin-adjacent position when it fits in the viewport', () => {
+  it('aligns the dialog top with the comment icon visual top when it fits in the viewport', () => {
     const position = getDialogPositionNearPin(
       { x: 100, y: 80 },
       { width: 320, height: 448 },
@@ -50,7 +50,7 @@ describe('dialog positioning', () => {
     )
 
     expect(position.x).toBe(116)
-    expect(position.y).toBe(76)
+    expect(position.y).toBe(69)
   })
 
   it('toggles the design panel from chat or design controls', () => {

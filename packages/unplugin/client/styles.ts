@@ -18,6 +18,9 @@ export const OVERLAY_STYLES = `
     height: 28px;
     flex-shrink: 0;
   }
+  .pinfix-pin-relocating {
+    pointer-events: none;
+  }
   .pinfix-pin-dot[data-status="sent"] {
     animation: pinfix-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
@@ -26,6 +29,31 @@ export const OVERLAY_STYLES = `
   @keyframes pinfix-pulse {
     0%, 100% { opacity: 1; transform: scale(1); }
     50% { opacity: 0.7; transform: scale(1.1); }
+  }
+
+  .pinfix-selection-marker {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 28px;
+    height: 28px;
+    z-index: 100000;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.88);
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.28));
+    --pinfix-comment-fill: #0070ea;
+    --pinfix-comment-stroke: #fff;
+    transition: opacity 0.12s ease, transform 0.12s ease;
+  }
+  .pinfix-selection-marker svg {
+    width: 28px;
+    height: 28px;
+    display: block;
+  }
+  .pinfix-selection-marker-active.pinfix-selection-marker-positioned {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
   }
 
   /* Chat dialog */
@@ -57,22 +85,6 @@ export const OVERLAY_STYLES = `
   }
   .pinfix-chat-header:active {
     cursor: grabbing;
-  }
-  .pinfix-chat-header-icon {
-    width: 18px;
-    height: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #adc7ff;
-    flex-shrink: 0;
-    opacity: 0.9;
-    --pinfix-comment-fill: #0070ea;
-    --pinfix-comment-stroke: #fff;
-  }
-  .pinfix-chat-header-icon svg {
-    width: 18px;
-    height: 18px;
   }
   .pinfix-chat-title {
     font-size: 14px;
@@ -862,36 +874,40 @@ export const OVERLAY_STYLES = `
     position: fixed;
     bottom: 16px;
     right: 16px;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: #2d3135;
-    border: 1px solid rgba(113, 119, 134, 0.3);
-    box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    width: 42px;
+    height: 42px;
+    border-radius: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #adc7ff;
     cursor: pointer;
     z-index: 99998;
-    transition: background 0.2s, transform 0.1s;
+    transition: background 0.2s, opacity 0.12s ease, transform 0.12s ease;
     user-select: none;
     --pinfix-comment-fill: #0070ea;
     --pinfix-comment-stroke: #fff;
   }
   .pinfix-fab svg {
-    width: 24px;
-    height: 24px;
+    width: 34px;
+    height: 34px;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.28));
   }
   .pinfix-fab:hover {
-    background: #3a3f44;
+    background: transparent;
     transform: scale(1.05);
   }
+  .pinfix-fab-hidden {
+    display: none;
+  }
   .pinfix-fab.active {
-    background: #0070ea;
+    background: transparent;
     color: #fff;
-    border-color: #0070ea;
-    --pinfix-comment-fill: #fff;
-    --pinfix-comment-stroke: #0070ea;
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.92);
   }
 `

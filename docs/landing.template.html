@@ -553,12 +553,11 @@
       /* Cursor */
       .demo-cursor {
         position: absolute;
-        width: 28px;
-        height: 28px;
+        width: 20px;
+        height: 20px;
         pointer-events: none;
         z-index: 10;
         opacity: 0;
-        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.28));
         transition:
           left 0.8s cubic-bezier(0.4, 0, 0.2, 1),
           top 0.8s cubic-bezier(0.4, 0, 0.2, 1),
@@ -567,13 +566,29 @@
       .demo-cursor.visible {
         opacity: 1;
       }
-      .demo-cursor-comment {
-        display: none;
+
+      .demo-selection-marker {
+        position: absolute;
+        width: 28px;
+        height: 28px;
+        pointer-events: none;
+        z-index: 10;
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.88);
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.28));
+        transition:
+          left 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+          top 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+          opacity 0.2s,
+          transform 0.2s;
       }
-      .demo-cursor.comment .demo-cursor-arrow {
-        display: none;
+      .demo-selection-marker.visible {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
       }
-      .demo-cursor.comment .demo-cursor-comment {
+      .demo-selection-marker svg {
+        width: 28px;
+        height: 28px;
         display: block;
       }
 
@@ -653,19 +668,6 @@
         align-items: center;
         gap: 8px;
         background: #2d3135;
-      }
-      .demo-dialog-header .icon {
-        width: 18px;
-        height: 18px;
-        --pinfix-comment-fill: #0070ea;
-        --pinfix-comment-stroke: #fff;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .demo-dialog-header .icon svg {
-        width: 18px;
-        height: 18px;
       }
       .demo-dialog-header .title {
         font-size: 13px;
@@ -959,12 +961,12 @@
         position: absolute;
         bottom: 16px;
         right: 16px;
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        background: #2d3135;
-        border: 1px solid rgba(113, 119, 134, 0.3);
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+        width: 42px;
+        height: 42px;
+        border-radius: 0;
+        background: transparent;
+        border: 0;
+        box-shadow: none;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -978,16 +980,21 @@
           border-color 0.2s;
       }
       .demo-fab.active {
-        background: #0070ea;
+        background: transparent;
         color: #fff;
-        border-color: #0070ea;
         transform: scale(1.05);
-        --pinfix-comment-fill: #fff;
-        --pinfix-comment-stroke: #0070ea;
+      }
+      .demo-fab.active.picked-up {
+        opacity: 0;
+        transform: scale(0.92);
+      }
+      .demo-fab.hidden {
+        display: none;
       }
       .demo-fab svg {
-        width: 24px;
-        height: 24px;
+        width: 34px;
+        height: 34px;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.28));
       }
     </style>
   </head>
@@ -1070,22 +1077,23 @@
             <svg class="demo-cursor-arrow" width="20" height="20" viewBox="0 0 24 24" fill="#333">
               <path d="M5 3l14 8-6 2-3 7-5-17z" />
             </svg>
+          </div>
+
+          <!-- Picked-up marker -->
+          <div class="demo-selection-marker" id="demo-selection-marker">
             <svg
-              class="demo-cursor-comment"
               width="28"
               height="28"
               viewBox="0 0 24 24"
               fill="#0070ea"
               stroke="#fff"
-              stroke-width="2.5"
+              stroke-width="1.6"
               stroke-linecap="round"
               stroke-linejoin="round"
             >
               <path
                 d="M12 2.5C6.75 2.5 2.5 6.25 2.5 10.9c0 2.15.92 4.1 2.45 5.56-.13.75-.42 1.58-.87 2.48-.18.36.15.77.54.67 1.45-.37 2.57-.83 3.36-1.37 1.36.55 2.9.86 4.52.86 5.25 0 9.5-3.75 9.5-8.4S17.25 2.5 12 2.5Z"
               />
-              <path d="M12 8v6" fill="none" />
-              <path d="M9 11h6" fill="none" />
             </svg>
           </div>
 
@@ -1097,7 +1105,7 @@
               viewBox="0 0 24 24"
               fill="var(--pinfix-comment-fill, #0070ea)"
               stroke="var(--pinfix-comment-stroke, #fff)"
-              stroke-width="2.5"
+              stroke-width="1.6"
               stroke-linecap="round"
               stroke-linejoin="round"
             >
@@ -1115,7 +1123,7 @@
               viewBox="0 0 24 24"
               fill="var(--pinfix-comment-fill, #0070ea)"
               stroke="var(--pinfix-comment-stroke, #fff)"
-              stroke-width="2.5"
+              stroke-width="1.6"
               stroke-linecap="round"
               stroke-linejoin="round"
             >
@@ -1130,22 +1138,6 @@
           <!-- Chat dialog (mirrors real PinFix UI) -->
           <div class="demo-dialog" id="demo-dialog">
             <div class="demo-dialog-header">
-              <div class="icon">
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="var(--pinfix-comment-fill, #0070ea)"
-                  stroke="var(--pinfix-comment-stroke, #fff)"
-                  stroke-width="2.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path
-                    d="M12 2.5C6.75 2.5 2.5 6.25 2.5 10.9c0 2.15.92 4.1 2.45 5.56-.13.75-.42 1.58-.87 2.48-.18.36.15.77.54.67 1.45-.37 2.57-.83 3.36-1.37 1.36.55 2.9.86 4.52.86 5.25 0 9.5-3.75 9.5-8.4S17.25 2.5 12 2.5Z"
-                  />
-                </svg>
-              </div>
               <span class="title">PinFix</span>
               <div class="actions">
                 <div class="hdr-btn">
@@ -1473,6 +1465,7 @@
     <script>
       ;(function () {
         const cursor = document.getElementById('demo-cursor')
+        const marker = document.getElementById('demo-selection-marker')
         const card = document.getElementById('demo-card')
         const btn = document.getElementById('demo-btn')
         const pin = document.getElementById('demo-pin')
@@ -1488,6 +1481,9 @@
           cursor.className = 'demo-cursor'
           cursor.style.left = ''
           cursor.style.top = ''
+          marker.className = 'demo-selection-marker'
+          marker.style.left = ''
+          marker.style.top = ''
           card.classList.remove('highlighted')
           btn.classList.remove('highlighted')
           pin.classList.remove('visible')
@@ -1495,6 +1491,8 @@
           pin.style.left = ''
           pin.style.top = ''
           fab.classList.remove('active')
+          fab.classList.remove('picked-up')
+          fab.classList.remove('hidden')
           dialog.classList.remove('visible')
           dialog.style.left = ''
           dialog.style.top = ''
@@ -1509,44 +1507,48 @@
           reset()
 
           // Use offsetLeft/offsetTop for reliable positioning within demo-body
-          const fabLeft = fab.offsetLeft + fab.offsetWidth / 2 - 6
-          const fabTop = fab.offsetTop + fab.offsetHeight / 2 - 6
+          const fabLeft = fab.offsetLeft + fab.offsetWidth / 2
+          const fabTop = fab.offsetTop + fab.offsetHeight / 2
           // btn.offsetParent is demo-body (position:relative), so offset is already absolute within demo-body
-          const btnCenterX = btn.offsetLeft + btn.offsetWidth / 2 - 6
-          const btnCenterY = btn.offsetTop + btn.offsetHeight / 2 - 6
+          const btnCenterX = btn.offsetLeft + btn.offsetWidth / 2
+          const btnCenterY = btn.offsetTop + btn.offsetHeight / 2
           const pinLeft = btn.offsetLeft + btn.offsetWidth - 8
           const pinTop = btn.offsetTop - 8
-          // Place dialog to the right of pin, but if it overflows, place below button
+          // Place dialog to the right of the pin, aligned to the bubble's visual top
           const demoBody = btn.closest('.demo-body')
           const bodyWidth = demoBody ? demoBody.offsetWidth : 800
-          let dlgLeft = btn.offsetLeft + btn.offsetWidth + 20
-          let dlgTop = btn.offsetTop - 4
+          let dlgLeft = pinLeft + 28
+          let dlgTop = pinTop + 3
           if (dlgLeft + 260 > bodyWidth - 16) {
             dlgLeft = btn.offsetLeft
             dlgTop = btn.offsetTop + btn.offsetHeight + 16
           }
 
           // Position cursor offscreen initially (bottom-right area)
-          cursor.style.left = fabLeft - 60 + 'px'
-          cursor.style.top = fabTop + 20 + 'px'
+          cursor.style.left = fabLeft - 70 + 'px'
+          cursor.style.top = fabTop + 14 + 'px'
+          marker.style.left = fabLeft + 'px'
+          marker.style.top = fabTop + 'px'
 
           // Step 1: Cursor appears, moves toward FAB
           setTimeout(() => {
             cursor.classList.add('visible')
-            cursor.style.left = fabLeft + 'px'
-            cursor.style.top = fabTop + 'px'
+            cursor.style.left = fabLeft - 10 + 'px'
+            cursor.style.top = fabTop - 10 + 'px'
           }, 400)
 
-          // Step 2: Click FAB — FAB activates
+          // Step 2: Click FAB — marker is picked up
           setTimeout(() => {
             fab.classList.add('active')
+            fab.classList.add('picked-up')
+            cursor.classList.remove('visible')
+            marker.classList.add('visible')
           }, 1300)
 
-          // Step 3: Cursor carries the comment icon, moves toward button
+          // Step 3: Picked-up marker moves toward button
           setTimeout(() => {
-            cursor.classList.add('comment')
-            cursor.style.left = btnCenterX + 'px'
-            cursor.style.top = btnCenterY + 'px'
+            marker.style.left = btnCenterX + 'px'
+            marker.style.top = btnCenterY + 'px'
           }, 1700)
 
           // Step 4: Highlight button on hover
@@ -1560,11 +1562,13 @@
             pin.style.top = pinTop + 'px'
             pin.classList.add('visible')
             pin.classList.add('pulse')
-            cursor.classList.remove('visible')
+            marker.classList.remove('visible')
             fab.classList.remove('active')
+            fab.classList.remove('picked-up')
+            fab.classList.add('hidden')
           }, 3100)
 
-          // Step 6: Show dialog to the right of pin
+          // Step 6: Show dialog top-aligned with the pin
           setTimeout(() => {
             dialog.style.left = dlgLeft + 'px'
             dialog.style.top = dlgTop + 'px'

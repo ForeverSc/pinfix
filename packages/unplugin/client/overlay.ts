@@ -23,7 +23,7 @@ import {
 import { OVERLAY_STYLES } from './styles.js'
 import { isHotkeyPressed, normalizeHotkeyEvent, parseHotkey } from './hotkey.js'
 import { isFabDragDistanceExceeded } from './drag.js'
-import { ICON_COMMENT_PLUS } from './icons.js'
+import { ICON_COMMENT, ICON_COMMENT_PLUS } from './icons.js'
 import {
   SELECTION_CURSOR_ATTR,
   applySelectionModeState,
@@ -58,6 +58,9 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 const cleanupFns: Array<() => void> = []
 let disposed = false
 let fabEl: HTMLElement | null = null
+let selectionMarkerEl: HTMLElement | null = null
+let selectionMarkerActive = false
+let relocatingPinId: string | null = null
 let designPreview: {
   pinId: string
   target: HTMLElement
@@ -109,17 +112,30 @@ export function handlePinClick(
   pinId: string,
   activePinId: string | null,
   effects: {
-    removePin: (pinId: string) => void
+    beginRelocatingPin: (pinId: string) => void
     setSelectionMode: (active: boolean) => void
     activatePin: (pinId: string) => void
   },
 ) {
   if (activePinId === pinId) {
-    effects.removePin(pinId)
+    effects.beginRelocatingPin(pinId)
     effects.setSelectionMode(true)
     return
   }
   effects.activatePin(pinId)
+}
+
+export function movePinToPointer(pin: Pin, point: { x: number; y: number }) {
+  pin.x = point.x
+  pin.y = point.y
+  if (pin.el) {
+    pin.el.style.left = `${point.x - 12}px`
+    pin.el.style.top = `${point.y - 12}px`
+  }
+}
+
+export function shouldShowFabForPinCount(pinCount: number): boolean {
+  return pinCount === 0
 }
 
 export function init() {
@@ -264,8 +280,80 @@ function setSelectionMode(nextActive: boolean) {
     setFabActive: (active) => {
       if (fabEl) fabEl.classList.toggle('active', active)
     },
+    setMarkerVisible: setSelectionMarkerVisible,
     hideHighlight,
   })
+  if (active && relocatingPinId) {
+    setSelectionMarkerVisible(false)
+  }
+  if (!active) {
+    clearRelocatingPin()
+  }
+}
+
+function syncFabVisibility() {
+  if (!fabEl) return
+  fabEl.classList.toggle('pinfix-fab-hidden', !shouldShowFabForPinCount(pins.length))
+}
+
+function ensureSelectionMarker(): HTMLElement {
+  if (selectionMarkerEl) return selectionMarkerEl
+
+  const marker = document.createElement('div')
+  marker.className = 'pinfix-selection-marker'
+  marker.innerHTML = ICON_COMMENT
+  shadowRoot.appendChild(marker)
+  selectionMarkerEl = marker
+  return marker
+}
+
+function setSelectionMarkerVisible(visible: boolean) {
+  selectionMarkerActive = visible
+  if (!visible && !selectionMarkerEl) return
+  const marker = visible ? ensureSelectionMarker() : selectionMarkerEl!
+  marker.classList.toggle('pinfix-selection-marker-active', visible)
+  if (!visible) {
+    marker.classList.remove('pinfix-selection-marker-positioned')
+  }
+}
+
+function moveSelectionMarker(x: number, y: number) {
+  const marker = ensureSelectionMarker()
+  marker.style.left = `${x}px`
+  marker.style.top = `${y}px`
+  marker.classList.add('pinfix-selection-marker-positioned')
+  if (selectionMarkerActive) {
+    marker.classList.add('pinfix-selection-marker-active')
+  }
+}
+
+function beginRelocatingPin(pinId: string) {
+  const pin = pins.find((p) => p.id === pinId)
+  if (!pin) return
+  relocatingPinId = pinId
+  pin.el?.classList.add('pinfix-pin-relocating')
+  resetDesignPreview({ restore: true })
+  setGlobalVisualChange(null)
+  hideGlobalTyping()
+  setGlobalStreaming(false)
+  hideGlobalDialog()
+}
+
+function clearRelocatingPin() {
+  if (!relocatingPinId) return
+  const pin = pins.find((p) => p.id === relocatingPinId)
+  pin?.el?.classList.remove('pinfix-pin-relocating')
+  relocatingPinId = null
+}
+
+function moveRelocatingPin(x: number, y: number) {
+  if (!relocatingPinId) return
+  const pin = pins.find((p) => p.id === relocatingPinId)
+  if (!pin) {
+    relocatingPinId = null
+    return
+  }
+  movePinToPointer(pin, { x, y })
 }
 
 function setPageCursor(cursor: string) {
@@ -327,6 +415,11 @@ function bindHotkeys() {
 
   const onMouseMove = (e: MouseEvent) => {
     if (!active) return
+    if (relocatingPinId) {
+      moveRelocatingPin(e.clientX, e.clientY)
+    } else {
+      moveSelectionMarker(e.clientX, e.clientY)
+    }
     const el = findSourceElement(e.target)
     if (el) showHighlight(el)
     else hideHighlight()
@@ -355,12 +448,13 @@ function bindHotkeys() {
 
     replacePinsWithSingleTarget(pins, pin, removePin)
     renderPin(shadowRoot, pin)
+    syncFabVisibility()
 
     // Pin dot click — pick up current pin, or switch if legacy state exists
     pin.el!.addEventListener('click', (ev) => {
       ev.stopPropagation()
       handlePinClick(pin.id, getActivePinId(), {
-        removePin,
+        beginRelocatingPin,
         setSelectionMode,
         activatePin: () => {
           setActivePinId(pin.id)
@@ -447,6 +541,7 @@ function bindHotkeys() {
     document.removeEventListener('click', onClick, true)
     window.removeEventListener('blur', onBlur)
     setPageCursor('')
+    setSelectionMarkerVisible(false)
   })
 }
 
@@ -458,10 +553,13 @@ function renderFab(root: ShadowRoot) {
 
   let fabDragged = false
 
-  fab.addEventListener('click', () => {
+  fab.addEventListener('click', (e) => {
     if (fabDragged) {
       fabDragged = false
       return
+    }
+    if (!active) {
+      moveSelectionMarker(e.clientX, e.clientY)
     }
     setSelectionMode(!active)
   })
@@ -496,6 +594,7 @@ function renderFab(root: ShadowRoot) {
 
   root.appendChild(fab)
   fabEl = fab
+  syncFabVisibility()
   cleanupFns.push(() => fab.remove())
 }
 
@@ -527,6 +626,7 @@ function removePin(pinId: string) {
   wsSend({ type: 'session:end', pinId })
   pin.el?.remove()
   pins.splice(idx, 1)
+  syncFabVisibility()
   handleRemovedPinUiState(pinId, getActivePinId(), {
     setVisualChange: setGlobalVisualChange,
     hideTyping: hideGlobalTyping,
