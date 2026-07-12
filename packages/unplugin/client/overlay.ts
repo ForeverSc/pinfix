@@ -31,11 +31,7 @@ import {
   getSelectionModeAfterSourceClick,
 } from './selection-mode.js'
 import { createWsUrl, getWorkspaceId } from './ws-url.js'
-import {
-  createDesignPanelChangeContext,
-  getDesignPanelDefaults,
-  shouldRestoreDesignPreview,
-} from './visual-edit.js'
+import { createDesignPanelChangeContext, getDesignPanelDefaults } from './visual-edit.js'
 
 declare const __PINFIX_WS_URL__: string | undefined
 declare const __PINFIX_HOTKEY__: string | undefined
@@ -69,14 +65,12 @@ let designPreview: {
   beforeRect: { x: number; y: number; width: number; height: number }
   inlineStyle: Record<string, string>
   textContent: string
-  observer: MutationObserver | null
 } | null = null
+const pendingDesignApplyPinIds = new Set<string>()
 
 const HEARTBEAT_TIMEOUT = 45_000
 const CLEANUP_KEY = '__PINFIX_OVERLAY_CLEANUP__'
-const DESIGN_PREVIEW_ATTR = 'data-pinfix-design-preview'
 const SELECTION_CURSOR_STYLE_ID = 'pinfix-selection-cursor-style'
-let designPreviewCounter = 0
 
 export function replacePinsWithSingleTarget(
   currentPins: Pin[],
@@ -87,6 +81,14 @@ export function replacePinsWithSingleTarget(
     removePinById(pin.id)
   }
   currentPins.push(nextPin)
+}
+
+export function shouldCommitDesignPreview(
+  completedPendingApply: boolean,
+  donePinId: string,
+  previewPinId: string | null,
+) {
+  return completedPendingApply && previewPinId === donePinId
 }
 
 export function handleRemovedPinUiState(
@@ -218,7 +220,17 @@ function connectWs() {
         hideGlobalTyping()
         setGlobalStreaming(false)
         updatePinStatus(pin, 'done')
+        if (
+          shouldCommitDesignPreview(
+            pendingDesignApplyPinIds.delete(pin.id),
+            pin.id,
+            designPreview?.pinId ?? null,
+          )
+        ) {
+          resetDesignPreview()
+        }
       } else if (msg.type === 'chat:error') {
+        pendingDesignApplyPinIds.delete(pin.id)
         hideGlobalTyping()
         setGlobalStreaming(false)
         showGlobalError(msg.error, () => {
@@ -484,6 +496,9 @@ function bindHotkeys() {
             content,
             ...(visualChange ? { visualChange } : {}),
           })
+          if (visualChange && designPreview?.pinId === activePin.id) {
+            pendingDesignApplyPinIds.add(activePin.id)
+          }
         }
       },
       () => {
@@ -623,6 +638,7 @@ function removePin(pinId: string) {
   if (designPreview?.pinId === pinId) {
     resetDesignPreview({ restore: true })
   }
+  pendingDesignApplyPinIds.delete(pinId)
   wsSend({ type: 'session:end', pinId })
   pin.el?.remove()
   pins.splice(idx, 1)
@@ -650,6 +666,7 @@ function cleanupOverlay() {
     ws = null
   }
   resetDesignPreview({ restore: true })
+  pendingDesignApplyPinIds.clear()
   destroyGlobalDialog()
   for (const cleanup of cleanupFns.splice(0)) {
     cleanup()
@@ -702,20 +719,15 @@ function previewDesignChange(
       pinId: activePin.id,
       target,
       targetSnapshot: snapshotTarget(target),
-      previewId: createDesignPreviewId(),
       beforeRect: snapshotRect(target.getBoundingClientRect()),
       inlineStyle: snapshotInlineStyle(target),
       textContent: target.textContent ?? '',
-      observer: null,
     }
   }
 
-  stopDesignPreviewObserver()
   restoreInlineStyle(target, designPreview.inlineStyle)
   target.textContent = designPreview.textContent
   applyDesignStyles(target, changes)
-  target.setAttribute(DESIGN_PREVIEW_ATTR, designPreview.previewId)
-  startDesignPreviewObserver(designPreview)
 
   const change = createDesignPanelChangeContext({
     source: activePin.source,
@@ -736,46 +748,11 @@ function previewDesignChange(
 function resetDesignPreview(options?: { restore?: boolean }) {
   if (!designPreview) return
   const preview = designPreview
-  if (
-    shouldRestoreDesignPreview({
-      restore: options?.restore,
-      expectedPreviewId: preview.previewId,
-      currentPreviewId: preview.target.getAttribute(DESIGN_PREVIEW_ATTR),
-    })
-  ) {
+  if (options?.restore) {
     restoreInlineStyle(preview.target, preview.inlineStyle)
     preview.target.textContent = preview.textContent
   }
-  preview.observer?.disconnect()
-  preview.target.removeAttribute(DESIGN_PREVIEW_ATTR)
   designPreview = null
-}
-
-function createDesignPreviewId(): string {
-  designPreviewCounter += 1
-  return `pinfix_design_preview_${designPreviewCounter}`
-}
-
-function stopDesignPreviewObserver() {
-  designPreview?.observer?.disconnect()
-  if (designPreview) designPreview.observer = null
-}
-
-function startDesignPreviewObserver(preview: NonNullable<typeof designPreview>) {
-  if (typeof MutationObserver === 'undefined') return
-  const observer = new MutationObserver(() => {
-    if (designPreview?.previewId !== preview.previewId) return
-    preview.target.removeAttribute(DESIGN_PREVIEW_ATTR)
-    observer.disconnect()
-    preview.observer = null
-  })
-  observer.observe(preview.target, {
-    attributes: true,
-    childList: true,
-    characterData: true,
-    subtree: true,
-  })
-  preview.observer = observer
 }
 
 const DESIGN_STYLE_KEYS = [

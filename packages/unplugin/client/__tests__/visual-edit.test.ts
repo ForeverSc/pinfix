@@ -6,7 +6,6 @@ import {
   getColorPickerValue,
   getKeyboardAdjustment,
   getDesignPanelDefaults,
-  shouldRestoreDesignPreview,
 } from '../visual-edit'
 
 describe('visual edit helpers', () => {
@@ -138,36 +137,5 @@ describe('visual edit helpers', () => {
     expect(getColorPickerValue('rgb(0, 112, 234)')).toBe('#0070ea')
     expect(getColorPickerValue('#fff')).toBe('#ffffff')
     expect(getColorPickerValue('var(--brand)')).toBe('#000000')
-  })
-
-  it('restores design panel previews only while the preview marker is still present', () => {
-    expect(
-      shouldRestoreDesignPreview({
-        restore: true,
-        expectedPreviewId: 'preview-1',
-        currentPreviewId: 'preview-1',
-      }),
-    ).toBe(true)
-    expect(
-      shouldRestoreDesignPreview({
-        restore: true,
-        expectedPreviewId: 'preview-1',
-        currentPreviewId: null,
-      }),
-    ).toBe(false)
-    expect(
-      shouldRestoreDesignPreview({
-        restore: true,
-        expectedPreviewId: 'preview-1',
-        currentPreviewId: 'preview-2',
-      }),
-    ).toBe(false)
-    expect(
-      shouldRestoreDesignPreview({
-        restore: false,
-        expectedPreviewId: 'preview-1',
-        currentPreviewId: 'preview-1',
-      }),
-    ).toBe(false)
   })
 })

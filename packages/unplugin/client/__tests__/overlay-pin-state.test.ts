@@ -13,6 +13,19 @@ function makePin(id: string): Pin {
 }
 
 describe('overlay pin state', () => {
+  it('commits only the matching pending design preview when chat completes', async () => {
+    ;(globalThis as any).document = {
+      readyState: 'loading',
+      addEventListener: () => {},
+    }
+    const { shouldCommitDesignPreview } = await import('../overlay')
+
+    expect(shouldCommitDesignPreview(true, 'pin_active', 'pin_active')).toBe(true)
+    expect(shouldCommitDesignPreview(false, 'pin_active', 'pin_active')).toBe(false)
+    expect(shouldCommitDesignPreview(true, 'pin_active', 'pin_other')).toBe(false)
+    expect(shouldCommitDesignPreview(true, 'pin_active', null)).toBe(false)
+  })
+
   it('replaces existing pins when a new target is selected', async () => {
     ;(globalThis as any).document = {
       readyState: 'loading',

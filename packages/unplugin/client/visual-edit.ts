@@ -63,12 +63,6 @@ interface KeyboardAdjustmentInput {
   shiftKey: boolean
 }
 
-interface DesignPreviewRestoreInput {
-  restore?: boolean
-  expectedPreviewId: string
-  currentPreviewId: string | null
-}
-
 type KeyboardAdjustment =
   | { mode: 'move'; x: number; y: number }
   | { mode: 'resize'; width: number; height: number }
@@ -139,11 +133,6 @@ export function getKeyboardAdjustment(input: KeyboardAdjustmentInput): KeyboardA
     return { mode: 'resize', width: direction.x, height: direction.y }
   }
   return { mode: 'move', x: direction.x, y: direction.y }
-}
-
-export function shouldRestoreDesignPreview(input: DesignPreviewRestoreInput): boolean {
-  if (!input.restore) return false
-  return input.currentPreviewId === input.expectedPreviewId
 }
 
 export function getDesignPanelDefaults(input: DesignPanelStyleInput): DesignPanelChanges {
