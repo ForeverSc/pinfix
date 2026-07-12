@@ -1,5 +1,17 @@
 # @pinfix/plugin Changelog
 
+# [1.2.0](https://github.com/ForeverSc/pinfix/compare/@pinfix/plugin@1.1.0...@pinfix/plugin@1.2.0) (2026-07-12)
+
+### Bug Fixes
+
+- **client:** keep one active pin ([61cc445](https://github.com/ForeverSc/pinfix/commit/61cc4457a4120471ccc7b4232a9c74890a17226a))
+- **client:** refine comment pin workflow ([768e078](https://github.com/ForeverSc/pinfix/commit/768e07870c1c8e6fe9fdd28f29e37076882c85a4))
+- **docs:** refine landing demo pin timing ([9a48795](https://github.com/ForeverSc/pinfix/commit/9a487954db4c291d0a58748c35f1c74d6fd00709))
+
+### Features
+
+- **client:** streamline comment pin flow ([dd903fb](https://github.com/ForeverSc/pinfix/commit/dd903fb5e13ff9f4c7290c36d4ccc4c368230277))
+
 # [1.1.0](https://github.com/ForeverSc/pinfix/compare/@pinfix/plugin@1.0.4...@pinfix/plugin@1.1.0) (2026-07-05)
 
 ### Bug Fixes
