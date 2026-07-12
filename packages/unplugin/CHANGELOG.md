@@ -1,5 +1,11 @@
 # @pinfix/plugin Changelog
 
+## [1.2.1](https://github.com/ForeverSc/pinfix/compare/@pinfix/plugin@1.2.0...@pinfix/plugin@1.2.1) (2026-07-12)
+
+### Bug Fixes
+
+- **client:** preserve applied design previews ([d364ac8](https://github.com/ForeverSc/pinfix/commit/d364ac8b77090c879cc07da5d4321616eeed09ef))
+
 # [1.2.0](https://github.com/ForeverSc/pinfix/compare/@pinfix/plugin@1.1.0...@pinfix/plugin@1.2.0) (2026-07-12)
 
 ### Bug Fixes
